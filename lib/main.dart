@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:spotify_clone/DI/service_locator.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_bloc.dart';
+import 'package:spotify_clone/bloc/download/download_bloc.dart';
+import 'package:spotify_clone/bloc/equalizer/equalizer_bloc.dart';
 import 'package:spotify_clone/bloc/history/history_bloc.dart';
 import 'package:spotify_clone/bloc/liked_songs/liked_songs_bloc.dart';
 import 'package:spotify_clone/bloc/lyrics/lyrics_bloc.dart';
@@ -77,6 +79,12 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<StatsBloc>(
           create: (context) => locator<StatsBloc>(),
+        ),
+        BlocProvider<EqualizerBloc>(
+          create: (context) => locator<EqualizerBloc>(),
+        ),
+        BlocProvider<DownloadBloc>(
+          create: (context) => locator<DownloadBloc>(),
         ),
       ],
       child: MaterialApp(

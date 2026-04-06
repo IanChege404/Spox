@@ -1,11 +1,153 @@
-# SpotifyClone 
-![mockup](assets/mockup.png)
+# Spox — Flutter Spotify Clone
 
-[![Flutter CI/CD](https://github.com/devmahnx/Spotify-Clone-Old/actions/workflows/flutter.yml/badge.svg)](https://github.com/devmahnx/Spotify-Clone-Old/actions/workflows/flutter.yml)
-[![codecov](https://codecov.io/gh/devmahnx/Spotify-Clone-Old/graph/badge.svg)](https://codecov.io/gh/devmahnx/Spotify-Clone-Old)
+[![Flutter CI/CD](https://github.com/IanChege404/Spox/actions/workflows/flutter.yml/badge.svg)](https://github.com/IanChege404/Spox/actions/workflows/flutter.yml)
+[![codecov](https://codecov.io/gh/IanChege404/Spox/graph/badge.svg)](https://codecov.io/gh/IanChege404/Spox)
 [![Test Coverage](https://img.shields.io/badge/coverage-22.8%25-orange)](coverage/lcov.info)
-[![Tests](https://img.shields.io/badge/tests-179%20passing-brightgreen)](test/)
-![Tests](https://img.shields.io/badge/tests-179%20passed-brightgreen)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](test/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A production-grade Flutter Spotify clone built as a portfolio project demonstrating clean architecture, BLoC state management, Spotify Web API integration, and professional testing practices.
+
+---
+
+## ✨ Features
+
+| Feature | Details |
+|---|---|
+| **Home Screen** | Browse featured playlists & new releases via Spotify Web API |
+| **Search** | Real-time Spotify search across tracks, artists, albums & playlists |
+| **Track View** | Now-playing screen with album art, lyrics sync, sleep timer, share |
+| **Equalizer** | 5-band EQ with presets (Flat, Bass Boost, Treble Boost, Vocal, Electronic) persisted in Hive |
+| **Offline/Downloads** | Simulated download manager with progress tracking |
+| **Barcode Scanner** | Upgraded mobile scanner — parses Spotify URIs, torch button |
+| **Stats** | Listening statistics — top tracks, artists, total minutes |
+| **Auth** | Spotify OAuth 2.0 PKCE flow with token refresh |
+| **Audio** | just_audio + audio_service (background playback, OS media controls) |
+| **Lyrics** | Synced lyrics via LRCLIB API |
+| **Theme** | Dark/Light theme toggle, persisted via Hive |
+| **Firebase** | Authentication + Cloud Firestore sync (optional) |
+
+---
+
+## 🏗️ Architecture
+
+```
+lib/
+├── DI/                   # Dependency injection (get_it service locator)
+├── bloc/                 # BLoC state management (13 BLoCs)
+│   ├── audio_player/
+│   ├── equalizer/        # NEW — 5-band EQ + presets
+│   ├── download/         # NEW — offline download simulation
+│   └── ...
+├── core/
+│   ├── errors/           # AppException hierarchy
+│   ├── config/           # EnvConfig (.env loading)
+│   └── network/          # HttpClient (Dio)
+├── data/
+│   ├── datasource/       # Local & Spotify API datasources
+│   ├── model/            # Data models
+│   └── repository/       # Repository pattern
+├── services/             # Audio, Hive, Spotify API, Firebase
+├── ui/                   # 35+ screens
+└── widgets/              # Reusable UI components
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for a full architecture description.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Flutter 3.13.0+
+- Android Studio / VS Code
+- A [Spotify Developer](https://developer.spotify.com/dashboard) account
+
+### Setup
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/IanChege404/Spox.git
+cd Spox
+
+# 2. Install dependencies
+flutter pub get
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env and fill in your Spotify API credentials
+
+# 4. Run the app
+flutter run
+```
+
+See [SPOTIFY_SETUP.md](SPOTIFY_SETUP.md) for detailed Spotify API configuration.
+
+---
+
+## 🧪 Testing
+
+### Run Unit Tests
+
+```bash
+flutter test
+```
+
+### Run with Coverage
+
+```bash
+flutter test --coverage
+```
+
+### Run Integration Tests
+
+```bash
+flutter test integration_test/app_test.dart
+```
+
+### Test Structure
+
+| Layer | Files | Description |
+|---|---|---|
+| `test/bloc/` | 11 test files | BLoC unit tests (AudioPlayer, Home, Equalizer, Download, …) |
+| `test/services/` | 3 test files | Service unit tests |
+| `test/data/` | 1 test file | Repository tests |
+| `test/widget/` | 2 test files | Widget smoke tests (dashboard tabs, scanner URI parsing) |
+| `integration_test/` | 1 test file | End-to-end integration test |
+
+---
+
+## 📦 Key Dependencies
+
+| Category | Packages |
+|---|---|
+| State Management | `bloc`, `flutter_bloc`, `equatable` |
+| DI | `get_it` |
+| Audio | `just_audio`, `audio_service` |
+| Network | `dio` |
+| Persistence | `hive`, `hive_flutter` |
+| Scanner | `mobile_scanner` |
+| Share | `screenshot`, `share_plus` |
+| Charts | `fl_chart` |
+| Firebase | `firebase_core`, `firebase_auth`, `cloud_firestore` |
+
+---
+
+## 📄 Documentation
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Architecture overview
+- [CHANGELOG.md](CHANGELOG.md) — Version history
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution guide
+- [SPOTIFY_SETUP.md](SPOTIFY_SETUP.md) — Spotify API setup
+- [TESTING.md](TESTING.md) — Testing guide
+- [docs/DEMO.md](docs/DEMO.md) — Demo & screenshots
+
+---
+
+## 📜 License
+
+MIT License — see [LICENSE](LICENSE) for details.
 
 
 ## Overview 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_bloc.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_event.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_state.dart';
@@ -33,6 +35,7 @@ class _TrackViewScreenState extends State<TrackViewScreen> {
   Color _dominantColor = MyColors.blackColor;
   bool _isSleepTimerActive = false;
   Duration _sleepTimerRemaining = Duration.zero;
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   Widget build(BuildContext context) {
@@ -72,9 +75,11 @@ class _TrackViewScreenState extends State<TrackViewScreen> {
           });
         }
       },
-      child: Scaffold(
-        body: Stack(
-          children: [
+      child: Screenshot(
+        controller: _screenshotController,
+        child: Scaffold(
+          body: Stack(
+            children: [
             // Animated background with dominant color
             AnimatedContainer(
               duration: const Duration(milliseconds: 800),
@@ -266,9 +271,12 @@ class _TrackViewScreenState extends State<TrackViewScreen> {
                                       duration:
                                           const Duration(milliseconds: 250),
                                       opacity: (isSwitchedToNextTab) ? 0 : 1,
-                                      child: Image.asset(
-                                        'images/share.png',
-                                        color: Colors.white,
+                                      child: GestureDetector(
+                                        onTap: _shareScreenshot,
+                                        child: Image.asset(
+                                          'images/share.png',
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -702,7 +710,20 @@ class _TrackViewScreenState extends State<TrackViewScreen> {
           ],
         ),
       ),
+      ),
     );
+  }
+
+  /// Share a screenshot of the current track view
+  Future<void> _shareScreenshot() async {
+    try {
+      final imageBytes = await _screenshotController.capture();
+      if (imageBytes == null) return;
+      final xFile = XFile.fromData(imageBytes, mimeType: 'image/png', name: 'spox_share.png');
+      await Share.shareXFiles([xFile], text: 'Check out what I\'m listening to on Spox!');
+    } catch (e) {
+      debugPrint('Share failed: $e');
+    }
   }
 
   /// Extract dominant color from album art
