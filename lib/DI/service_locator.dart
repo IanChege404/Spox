@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_bloc.dart';
+import 'package:spotify_clone/bloc/download/download_bloc.dart';
+import 'package:spotify_clone/bloc/equalizer/equalizer_bloc.dart';
 import 'package:spotify_clone/bloc/history/history_bloc.dart';
 import 'package:spotify_clone/bloc/home/home_bloc.dart';
 import 'package:spotify_clone/bloc/liked_songs/liked_songs_bloc.dart';
@@ -114,6 +116,14 @@ void initServiceLocator(HiveService hiveService) {
   locator.registerSingleton<StatsBloc>(
     StatsBloc(statsService: locator<StatsService>()),
   );
+
+  // Equalizer BLoC (Phase 6+ - Equalizer UI)
+  locator.registerSingleton<EqualizerBloc>(
+    EqualizerBloc(hiveService: locator<HiveService>()),
+  );
+
+  // Download BLoC (Phase 6+ - Offline/Download Mode)
+  locator.registerSingleton<DownloadBloc>(DownloadBloc());
 
   // Datasources — Using Spotify API instead of local hardcoded data (Phase 2.1)
   // This switches from hardcoded Drake album to live Spotify API data

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:spotify_clone/constants/constants.dart';
+import 'package:spotify_clone/ui/equalizer_screen.dart';
 import 'package:spotify_clone/ui/home_screen.dart';
 import 'package:spotify_clone/ui/library_screen.dart';
+import 'package:spotify_clone/ui/offline_screen.dart';
 import 'package:spotify_clone/ui/search_category_screen.dart';
 import 'package:spotify_clone/ui/stats_screen.dart';
 
@@ -23,11 +25,11 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         width: MediaQuery.of(context).size.width,
         color: MyColors.blackColor.withValues(alpha: 0.95),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 45),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: BottomNavigationBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            selectedLabelStyle: const TextStyle(fontFamily: "AM", fontSize: 13),
+            selectedLabelStyle: const TextStyle(fontFamily: "AM", fontSize: 11),
             selectedItemColor: const Color(0xffE5E5E5),
             unselectedItemColor: MyColors.lightGrey,
             type: BottomNavigationBarType.fixed,
@@ -64,12 +66,22 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   'images/icon_library_active.png',
                   color: MyColors.whiteColor,
                 ),
-                label: "Your Library",
+                label: "Library",
               ),
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.bar_chart),
-                activeIcon: const Icon(Icons.bar_chart),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.bar_chart),
+                activeIcon: Icon(Icons.bar_chart),
                 label: "Stats",
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.equalizer),
+                activeIcon: Icon(Icons.equalizer, color: Color(0xff1ED760)),
+                label: "EQ",
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.download_outlined),
+                activeIcon: Icon(Icons.download, color: Color(0xff1ED760)),
+                label: "Offline",
               ),
             ],
           ),
@@ -77,11 +89,13 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
       ),
       body: IndexedStack(
         index: _currentIndex,
-        children: const [
-          HomeScreen(),
-          SearchCategoryScreen(),
-          LibraryScreen(),
-          StatsScreen(),
+        children: [
+          const HomeScreen(),
+          const SearchCategoryScreen(),
+          const LibraryScreen(),
+          const StatsScreen(),
+          const EqualizerScreen(),
+          const OfflineScreen(),
         ],
       ),
     );

@@ -62,10 +62,15 @@ dependencies:
   # Screenshot for Sharing
   screenshot: ^2.1.0
 
+  # Share to social media
+  share_plus: ^9.0.0
+
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
   bloc_test: ^9.1.0
