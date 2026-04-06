@@ -183,3 +183,68 @@ class UnknownException extends AppException {
         originalError: error,
       );
 }
+
+/// Audio playback errors (codec unsupported, source unavailable)
+class AudioPlaybackException extends AppException {
+  AudioPlaybackException({
+    required String message,
+    String? code,
+    dynamic originalError,
+  }) : super(
+    message: message,
+    code: code,
+    originalError: originalError,
+  );
+
+  factory AudioPlaybackException.sourceUnavailable() => AudioPlaybackException(
+    message: 'Audio source is unavailable. Please try again.',
+    code: 'SOURCE_UNAVAILABLE',
+  );
+
+  factory AudioPlaybackException.codecUnsupported() => AudioPlaybackException(
+    message: 'Audio format not supported on this device.',
+    code: 'CODEC_UNSUPPORTED',
+  );
+
+  factory AudioPlaybackException.playbackFailed(dynamic error) =>
+      AudioPlaybackException(
+        message: 'Playback failed. Please try again.',
+        code: 'PLAYBACK_FAILED',
+        originalError: error,
+      );
+}
+
+/// Local storage / persistence errors (Hive read/write, database corruption)
+class LocalStorageException extends AppException {
+  LocalStorageException({
+    required String message,
+    String? code,
+    dynamic originalError,
+  }) : super(
+    message: message,
+    code: code,
+    originalError: originalError,
+  );
+
+  factory LocalStorageException.initFailed(dynamic error) =>
+      LocalStorageException(
+        message: 'Failed to initialize local storage.',
+        code: 'INIT_FAILED',
+        originalError: error,
+      );
+
+  factory LocalStorageException.readFailed() => LocalStorageException(
+    message: 'Failed to read from local storage.',
+    code: 'READ_FAILED',
+  );
+
+  factory LocalStorageException.writeFailed() => LocalStorageException(
+    message: 'Failed to write to local storage.',
+    code: 'WRITE_FAILED',
+  );
+
+  factory LocalStorageException.deleteFailed() => LocalStorageException(
+    message: 'Failed to delete from local storage.',
+    code: 'DELETE_FAILED',
+  );
+}
