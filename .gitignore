@@ -77,3 +77,44 @@ lib/firebase_options.dart
 firebase_options.dart
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+# Gradle cache and build files
+.gradle/
+.gradle-home/
+android/.gradle/
+android/.gradle-home/
+*.lock
+
+# Logs and build outputs
+*.log
+logs.txt
+build_log*.txt
+*.hprof
+
+# Backup files
+backup/
+*.tar.gz
+*.tgz
+
+# Node modules (for scripts)
+scripts/node_modules/
+
+# Gradle cache and build files
+.gradle/
+.gradle-home/
+android/.gradle/
+android/.gradle-home/
+*.lock
+
+# Logs and build outputs
+*.log
+logs.txt
+build_log*.txt
+*.hprof
+
+# Backup files
+backup/
+*.tar.gz
+*.tgz
+
+# Node modules (for scripts)
+scripts/node_modules/

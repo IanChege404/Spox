@@ -2,14 +2,13 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:spotify_clone/bloc/search/search_event.dart';
 import 'package:spotify_clone/bloc/search/search_state.dart';
-import 'package:spotify_clone/data/model/album.dart';
-import 'package:spotify_clone/data/model/album_track.dart';
-import 'package:spotify_clone/data/model/artist.dart';
-import 'package:spotify_clone/data/model/playlist.dart';
+import 'package:spotify_clone/data/model/spotify_models.dart';
+import 'package:spotify_clone/services/hive_service.dart';
 import 'package:spotify_clone/services/spotify_api_service.dart';
 
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
   final SpotifyApiService _spotifyApiService;
+  final HiveService _hiveService;
 
   /// Timer for debouncing search queries
   Timer? _debounceTimer;
@@ -20,8 +19,11 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
   /// Duration to debounce search (300ms)
   static const Duration _debounceDuration = Duration(milliseconds: 300);
 
-  SearchBloc({required SpotifyApiService spotifyApiService})
-      : _spotifyApiService = spotifyApiService,
+  SearchBloc({
+    required SpotifyApiService spotifyApiService,
+    required HiveService hiveService,
+  })  : _spotifyApiService = spotifyApiService,
+        _hiveService = hiveService,
         super(const SearchInitial()) {
     on<SearchQueryEvent>(_onSearchQuery);
     on<SearchClearEvent>(_onSearchClear);
@@ -76,129 +78,57 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
   }
 
   /// Perform actual search after debounce
+  /// Fetches from Spotify API - no caching for fresh results
   Future<void> _performSearch(String query, Emitter<SearchState> emit) async {
     try {
       emit(SearchLoading(query));
 
-      // Search across all types: tracks, artists, albums, playlists
+      // Search across all types: tracks, albums, artists, playlists
+      // Direct Spotify API call - always fresh results
       final searchResult = await _spotifyApiService.search(
         query,
-        type: 'track,artist,album,playlist',
+        type: 'track,album,artist,playlist',
         limit: 20,
       );
+
+      await _hiveService.saveRecentSearch(query);
 
       if (searchResult.isEmpty) {
         emit(SearchEmpty(query));
         return;
       }
 
-      // Parse tracks
-      final tracks = _parseTracks(searchResult);
-
-      // Parse artists
-      final artists = _parseArtists(searchResult);
-
-      // Parse albums
-      final albums = _parseAlbums(searchResult);
-
-      // Parse playlists
-      final playlists = _parsePlaylists(searchResult);
+      // Parse results using Spotify models
+      final tracks = _parseSpotifyTracks(searchResult);
+      final albums = _parseSpotifyAlbums(searchResult);
+      final artists = _parseSpotifyArtists(searchResult);
+      final playlists = _parseSpotifyPlaylists(searchResult);
 
       // Check if any results found
       if (tracks.isEmpty &&
-          artists.isEmpty &&
           albums.isEmpty &&
+          artists.isEmpty &&
           playlists.isEmpty) {
         emit(SearchEmpty(query));
         return;
       }
 
       emit(SearchLoaded(
-        songs: tracks,
-        artists: artists,
+        tracks: tracks,
         albums: albums,
+        artists: artists,
         playlists: playlists,
         query: query,
       ));
     } catch (e) {
-      print('Search error: $e');
+      print('[SearchBloc] ✗ Search error: $e');
       emit(SearchError('Failed to search: ${e.toString()}', query: query));
     }
   }
 
-  /// Parse tracks from search result
-  List<AlbumTrack> _parseTracks(Map<String, dynamic> result) {
-    final tracks = <AlbumTrack>[];
-
-    try {
-      if (result['tracks'] != null && result['tracks']['items'] != null) {
-        final items = result['tracks']['items'] as List<dynamic>;
-
-        for (final item in items) {
-          try {
-            final track = item as Map<String, dynamic>;
-            final artists = track['artists'] as List<dynamic>? ?? [];
-            final artistNames = artists
-                .whereType<Map<String, dynamic>>()
-                .map((a) => a['name'] as String? ?? 'Unknown')
-                .join(', ');
-
-            tracks.add(AlbumTrack(
-              track['name'] as String? ?? 'Unknown',
-              artistNames.isNotEmpty ? artistNames : 'Unknown',
-            ));
-          } catch (e) {
-            print('Error parsing track: $e');
-            continue;
-          }
-        }
-      }
-    } catch (e) {
-      print('Error parsing tracks: $e');
-    }
-
-    return tracks;
-  }
-
-  /// Parse artists from search result
-  List<Artist> _parseArtists(Map<String, dynamic> result) {
-    final artists = <Artist>[];
-
-    try {
-      if (result['artists'] != null && result['artists']['items'] != null) {
-        final items = result['artists']['items'] as List<dynamic>;
-
-        for (final item in items) {
-          try {
-            final artist = item as Map<String, dynamic>;
-            final images = artist['images'] as List<dynamic>? ?? [];
-            String imageUrl = 'https://via.placeholder.com/300x300?text=Artist';
-
-            if (images.isNotEmpty) {
-              final firstImage = images[0] as Map<String, dynamic>;
-              imageUrl = firstImage['url'] as String? ?? imageUrl;
-            }
-
-            artists.add(Artist(
-              imageUrl,
-              artist['name'] as String? ?? 'Unknown',
-            ));
-          } catch (e) {
-            print('Error parsing artist: $e');
-            continue;
-          }
-        }
-      }
-    } catch (e) {
-      print('Error parsing artists: $e');
-    }
-
-    return artists;
-  }
-
-  /// Parse albums from search result
-  List<Album> _parseAlbums(Map<String, dynamic> result) {
-    final albums = <Album>[];
+  /// Parse albums from Spotify search result
+  List<SpotifyAlbum> _parseSpotifyAlbums(Map<String, dynamic> result) {
+    final albums = <SpotifyAlbum>[];
 
     try {
       if (result['albums'] != null && result['albums']['items'] != null) {
@@ -207,45 +137,79 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
         for (final item in items) {
           try {
             final album = item as Map<String, dynamic>;
-            final images = album['images'] as List<dynamic>? ?? [];
-            String imageUrl = 'https://via.placeholder.com/300x300?text=Album';
-
-            if (images.isNotEmpty) {
-              final firstImage = images[0] as Map<String, dynamic>;
-              imageUrl = firstImage['url'] as String? ?? imageUrl;
-            }
-
-            final artists = album['artists'] as List<dynamic>? ?? [];
-            final artistNames = artists
-                .whereType<Map<String, dynamic>>()
-                .map((a) => a['name'] as String? ?? 'Unknown')
-                .join(', ');
-
-            albums.add(Album(
-              imageUrl,
-              album['name'] as String? ?? 'Unknown',
-              artistNames.isNotEmpty ? artistNames : 'Unknown',
-              [],
-              '',
-              '',
-              [],
-            ));
+            final albumObj = SpotifyAlbum.fromJson(album);
+            albums.add(albumObj);
           } catch (e) {
-            print('Error parsing album: $e');
+            print('[SearchBloc] Warning: Error parsing album: $e');
             continue;
           }
         }
       }
     } catch (e) {
-      print('Error parsing albums: $e');
+      print('[SearchBloc] ⚠ Error parsing albums: $e');
     }
 
     return albums;
   }
 
-  /// Parse playlists from search result
-  List<Playlist> _parsePlaylists(Map<String, dynamic> result) {
-    final playlists = <Playlist>[];
+  /// Parse tracks from Spotify search result
+  /// Returns SpotifyTrack objects with all necessary fields
+  List<SpotifyTrack> _parseSpotifyTracks(Map<String, dynamic> result) {
+    final tracks = <SpotifyTrack>[];
+
+    try {
+      if (result['tracks'] != null && result['tracks']['items'] != null) {
+        final items = result['tracks']['items'] as List<dynamic>;
+
+        for (final item in items) {
+          try {
+            final track = item as Map<String, dynamic>;
+            final track_obj = SpotifyTrack.fromJson(track);
+            tracks.add(track_obj);
+          } catch (e) {
+            print('[SearchBloc] Warning: Error parsing track: $e');
+            continue;
+          }
+        }
+      }
+    } catch (e) {
+      print('[SearchBloc] ⚠ Error parsing tracks: $e');
+    }
+
+    return tracks;
+  }
+
+  /// Parse artists from Spotify search result
+  /// Returns SpotifyArtist objects with all fields
+  List<SpotifyArtist> _parseSpotifyArtists(Map<String, dynamic> result) {
+    final artists = <SpotifyArtist>[];
+
+    try {
+      if (result['artists'] != null && result['artists']['items'] != null) {
+        final items = result['artists']['items'] as List<dynamic>;
+
+        for (final item in items) {
+          try {
+            final artist = item as Map<String, dynamic>;
+            final artist_obj = SpotifyArtist.fromJson(artist);
+            artists.add(artist_obj);
+          } catch (e) {
+            print('[SearchBloc] Warning: Error parsing artist: $e');
+            continue;
+          }
+        }
+      }
+    } catch (e) {
+      print('[SearchBloc] ⚠ Error parsing artists: $e');
+    }
+
+    return artists;
+  }
+
+  /// Parse playlists from Spotify search result
+  /// Returns SpotifyPlaylist objects with all fields
+  List<SpotifyPlaylist> _parseSpotifyPlaylists(Map<String, dynamic> result) {
+    final playlists = <SpotifyPlaylist>[];
 
     try {
       if (result['playlists'] != null && result['playlists']['items'] != null) {
@@ -254,27 +218,16 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
         for (final item in items) {
           try {
             final playlist = item as Map<String, dynamic>;
-            final images = playlist['images'] as List<dynamic>? ?? [];
-            String imageUrl =
-                'https://via.placeholder.com/300x300?text=Playlist';
-
-            if (images.isNotEmpty) {
-              final firstImage = images[0] as Map<String, dynamic>;
-              imageUrl = firstImage['url'] as String? ?? imageUrl;
-            }
-
-            playlists.add(Playlist(
-              '',
-              [],
-            ));
+            final playlist_obj = SpotifyPlaylist.fromJson(playlist);
+            playlists.add(playlist_obj);
           } catch (e) {
-            print('Error parsing playlist: $e');
+            print('[SearchBloc] Warning: Error parsing playlist: $e');
             continue;
           }
         }
       }
     } catch (e) {
-      print('Error parsing playlists: $e');
+      print('[SearchBloc] ⚠ Error parsing playlists: $e');
     }
 
     return playlists;

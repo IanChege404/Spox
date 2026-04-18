@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:spotify_clone/constants/constants.dart';
+import 'package:spotify_clone/ui/podcast_screen.dart';
 import 'package:spotify_clone/ui/search_screen.dart';
-import 'package:spotify_clone/widgets/bottom_player.dart';
 
 class SearchCategoryScreen extends StatefulWidget {
   const SearchCategoryScreen({super.key});
@@ -154,14 +154,24 @@ class _SearchCategoryScreenState extends State<SearchCategoryScreen> {
                       ),
                     ),
                   ),
-                  const SliverToBoxAdapter(
+                  SliverToBoxAdapter(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _ImageContainer(
+                        const _ImageContainer(
                             title: "2023 Wrapped", image: "2023_wrapped.png"),
                         _ImageContainer(
-                            title: "Podcasts", image: "podcasts.png"),
+                          title: "Podcasts",
+                          image: "podcasts.png",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const PodcastScreen(),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -183,10 +193,6 @@ class _SearchCategoryScreenState extends State<SearchCategoryScreen> {
                   ),
                 ],
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 64),
-              child: BottomPlayer(),
             ),
           ],
         ),
@@ -299,41 +305,51 @@ class _SearchBox extends StatelessWidget {
 }
 
 class _ImageContainer extends StatelessWidget {
-  const _ImageContainer({required this.title, required this.image});
+  const _ImageContainer({
+    required this.title,
+    required this.image,
+    this.onTap,
+  });
   final String title;
   final String image;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          height: 100,
-          width: (MediaQuery.of(context).size.width / 1.75) - 50,
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage("images/$image"),
-              fit: BoxFit.cover,
-            ),
-            color: Colors.red,
-            borderRadius: const BorderRadius.all(
-              Radius.circular(10),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 10,
-          left: 10,
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontFamily: "AB",
-              fontSize: 16,
-              color: MyColors.whiteColor,
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        children: [
+          Container(
+            height: 100,
+            width: (MediaQuery.of(context).size.width / 1.75) - 50,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('images/$image'),
+                fit: BoxFit.cover,
+              ),
+              borderRadius: const BorderRadius.all(
+                Radius.circular(10),
+              ),
             ),
           ),
-        ),
-      ],
+          Positioned(
+            top: 10,
+            left: 10,
+            child: SizedBox(
+              width: 100,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'AB',
+                  fontSize: 16,
+                  color: MyColors.whiteColor,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

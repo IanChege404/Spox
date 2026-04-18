@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:spotify_clone/constants/constants.dart';
+import 'package:spotify_clone/widgets/dynamic_image.dart';
 
 class SongChip extends StatelessWidget {
   const SongChip(
@@ -28,7 +29,10 @@ class SongChip extends StatelessWidget {
                 SizedBox(
                   height: size,
                   width: size,
-                  child: Image.asset('images/home/$image'),
+                  child: DynamicImage(
+                    imageUrl: 'images/home/$image',
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 15),
                 Column(

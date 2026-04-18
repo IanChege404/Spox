@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Service Account Key (SENSITIVE - Never commit!)
+serviceAccountKey.json
+*.key.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

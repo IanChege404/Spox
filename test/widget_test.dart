@@ -1,130 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:spotify_clone/bloc/audio_player/audio_player_bloc.dart';
-import 'package:spotify_clone/bloc/audio_player/audio_player_state.dart';
-import 'package:spotify_clone/bloc/download/download_bloc.dart';
-import 'package:spotify_clone/bloc/download/download_state.dart';
-import 'package:spotify_clone/bloc/equalizer/equalizer_bloc.dart';
-import 'package:spotify_clone/bloc/equalizer/equalizer_state.dart';
-import 'package:spotify_clone/bloc/history/history_bloc.dart';
-import 'package:spotify_clone/bloc/liked_songs/liked_songs_bloc.dart';
-import 'package:spotify_clone/bloc/lyrics/lyrics_bloc.dart';
-import 'package:spotify_clone/bloc/queue/queue_bloc.dart';
-import 'package:spotify_clone/bloc/search/search_bloc.dart';
-import 'package:spotify_clone/bloc/stats/stats_bloc.dart';
-import 'package:spotify_clone/bloc/theme/theme_bloc.dart';
 import 'package:spotify_clone/main.dart';
-import 'package:spotify_clone/services/spotify_auth_service.dart';
-
-// Mock BLoCs
-class MockAudioPlayerBloc extends Mock implements AudioPlayerBloc {}
-
-class MockQueueBloc extends Mock implements QueueBloc {}
-
-class MockLikedSongsBloc extends Mock implements LikedSongsBloc {}
-
-class MockSearchBloc extends Mock implements SearchBloc {}
-
-class MockHistoryBloc extends Mock implements HistoryBloc {}
-
-class MockThemeBloc extends Mock implements ThemeBloc {}
-
-class MockLyricsBloc extends Mock implements LyricsBloc {}
-
-class MockStatsBloc extends Mock implements StatsBloc {}
-
-class MockEqualizerBloc extends Mock implements EqualizerBloc {}
-
-class MockDownloadBloc extends Mock implements DownloadBloc {}
-
-// Mock Services
-class MockSpotifyAuthService extends Mock implements SpotifyAuthService {}
+import 'helpers/test_helpers.dart';
 
 void main() {
-  final getIt = GetIt.instance;
-
   setUp(() {
-    // Clear any existing registrations to ensure a clean slate for every test
-    getIt.reset();
-    getIt.allowReassignment = true;
-
-    // Create mock Services
-    final mockSpotifyAuthService = MockSpotifyAuthService();
-
-    // Mock SpotifyAuthService behaviors
-    when(() => mockSpotifyAuthService.isAuthenticated).thenReturn(false);
-
-    // Register mock Services
-    getIt.registerSingleton<SpotifyAuthService>(mockSpotifyAuthService);
-
-    // Create mock BLoCs
-    final mockAudioPlayerBloc = MockAudioPlayerBloc();
-    final mockQueueBloc = MockQueueBloc();
-    final mockLikedSongsBloc = MockLikedSongsBloc();
-    final mockSearchBloc = MockSearchBloc();
-    final mockHistoryBloc = MockHistoryBloc();
-    final mockThemeBloc = MockThemeBloc();
-    final mockLyricsBloc = MockLyricsBloc();
-    final mockStatsBloc = MockStatsBloc();
-    final mockEqualizerBloc = MockEqualizerBloc();
-    final mockDownloadBloc = MockDownloadBloc();
-
-    // Mock stream behaviors for BLoCs that need them
-    when(() => mockAudioPlayerBloc.stream)
-        .thenAnswer((_) => const Stream.empty());
-    when(() => mockAudioPlayerBloc.state).thenReturn(AudioPlayerInitial());
-    when(() => mockAudioPlayerBloc.close())
-        .thenAnswer((_) async => Future.value());
-
-    when(() => mockQueueBloc.stream).thenAnswer((_) => const Stream.empty());
-    when(() => mockQueueBloc.close()).thenAnswer((_) async => Future.value());
-
-    when(() => mockLikedSongsBloc.stream)
-        .thenAnswer((_) => const Stream.empty());
-    when(() => mockLikedSongsBloc.close())
-        .thenAnswer((_) async => Future.value());
-
-    when(() => mockSearchBloc.stream).thenAnswer((_) => const Stream.empty());
-    when(() => mockSearchBloc.close()).thenAnswer((_) async => Future.value());
-
-    when(() => mockHistoryBloc.stream).thenAnswer((_) => const Stream.empty());
-    when(() => mockHistoryBloc.close()).thenAnswer((_) async => Future.value());
-
-    when(() => mockThemeBloc.stream).thenAnswer((_) => const Stream.empty());
-    when(() => mockThemeBloc.close()).thenAnswer((_) async => Future.value());
-
-    when(() => mockLyricsBloc.stream).thenAnswer((_) => const Stream.empty());
-    when(() => mockLyricsBloc.close()).thenAnswer((_) async => Future.value());
-
-    when(() => mockStatsBloc.stream).thenAnswer((_) => const Stream.empty());
-    when(() => mockStatsBloc.close()).thenAnswer((_) async => Future.value());
-
-    when(() => mockEqualizerBloc.stream)
-        .thenAnswer((_) => const Stream.empty());
-    when(() => mockEqualizerBloc.state).thenReturn(const EqualizerInitial());
-    when(() => mockEqualizerBloc.close())
-        .thenAnswer((_) async => Future.value());
-
-    when(() => mockDownloadBloc.stream).thenAnswer((_) => const Stream.empty());
-    when(() => mockDownloadBloc.state).thenReturn(const DownloadInitial());
-    when(() => mockDownloadBloc.close()).thenAnswer((_) async => Future.value());
-
-    // Register mock BLoCs
-    getIt.registerSingleton<AudioPlayerBloc>(mockAudioPlayerBloc);
-    getIt.registerSingleton<QueueBloc>(mockQueueBloc);
-    getIt.registerSingleton<LikedSongsBloc>(mockLikedSongsBloc);
-    getIt.registerSingleton<SearchBloc>(mockSearchBloc);
-    getIt.registerSingleton<HistoryBloc>(mockHistoryBloc);
-    getIt.registerSingleton<ThemeBloc>(mockThemeBloc);
-    getIt.registerSingleton<LyricsBloc>(mockLyricsBloc);
-    getIt.registerSingleton<StatsBloc>(mockStatsBloc);
-    getIt.registerSingleton<EqualizerBloc>(mockEqualizerBloc);
-    getIt.registerSingleton<DownloadBloc>(mockDownloadBloc);
+    setupMockGetIt();
   });
 
   tearDown(() {
-    getIt.reset();
+    tearDownMockGetIt();
   });
 
   testWidgets('App builds without errors', (WidgetTester tester) async {

@@ -5,6 +5,11 @@ abstract class PlaylistDatasource {
   Future<Playlist> trackList(String mix);
 }
 
+/// DEPRECATED: Local hardcoded playlist data
+/// Migration Status: Keep for backward compatibility only
+/// New implementations should use FirestoreDataSource instead.
+/// All local playlist data has been migrated to Firestore.
+/// See: lib/core/utils/firestore_seed_data.dart for complete data setup
 class PLaylistLocalDatasource extends PlaylistDatasource {
   @override
   Future<Playlist> trackList(String mix) async {

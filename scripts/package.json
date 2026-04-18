@@ -1,0 +1,31 @@
+{
+  "name": "firebase-seed",
+  "version": "1.0.0",
+  "description": "Populate Firestore database with seed data",
+  "main": "seed-firestore.js",
+  "scripts": {
+    "seed": "node seed-firestore.js",
+    "seed:dev": "node seed-firestore.js --dev",
+    "upload-images": "node upload-images.js",
+    "upload-images:dry-run": "node upload-images.js --dry-run",
+    "upload-images:force": "node upload-images.js --force",
+    "populate": "node populate-db.js",
+    "populate:dry-run": "node populate-db.js --dry-run",
+    "populate:skip-images": "node populate-db.js --skip-images",
+    "status": "node status.js"
+  },
+  "keywords": [
+    "firebase",
+    "firestore",
+    "seed"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

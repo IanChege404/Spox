@@ -36,6 +36,38 @@ By participating in this project, you agree to maintain a respectful and inclusi
    flutter run
    ```
 
+## Building
+
+### Development Build (Debug APK)
+
+For local testing on an emulator or connected device:
+
+```bash
+flutter build apk --debug
+```
+
+### Release Build (Production APK)
+
+For production releases:
+
+```bash
+flutter build apk --release
+```
+
+### App Bundle (for Google Play)
+
+For Play Store submission:
+
+```bash
+# Standard build (recommended for most systems)
+flutter build appbundle --release
+
+# With size analysis (requires ≥16GB free RAM, run separately if memory-constrained)
+flutter build appbundle --target-platform android-arm64 --analyze-size
+```
+
+**Note**: If you encounter `Gradle task bundleRelease failed with exit code 143`, this indicates memory exhaustion. See [Troubleshooting](#troubleshooting) below.
+
 ## Testing
 
 Before submitting a pull request, ensure all checks pass locally.
@@ -82,3 +114,69 @@ All three commands must exit with no errors or warnings before opening a PR.
 - Keep widgets small and composable; extract reusable widgets into `lib/widgets/`.
 - Add doc comments (`///`) to public classes and methods.
 - Avoid `print()` in production code; use structured logging via the app's logger utility.
+
+## Troubleshooting
+
+### `Gradle task bundleRelease failed with exit code 143`
+
+Exit code 143 (SIGTERM) indicates the Gradle process was terminated due to memory exhaustion. This is very common on systems with <16GB RAM. The project has been configured with emergency low-memory settings in `android/gradle.properties`.
+
+**Troubleshooting steps (in order):**
+
+1. **Kill Gradle daemon & clean build cache**:
+   ```bash
+   ./gradlew --stop
+   rm -rf build/
+   flutter pub get
+   flutter build appbundle --release
+   ```
+
+2. **Close unnecessary applications** to free up system RAM:
+   ```bash
+   # Monitor available memory during build
+   watch -n 1 free -h
+   ```
+   Target: At least **2-3GB free RAM** before starting the build.
+
+3. **Build APK instead of App Bundle** (APK requires less memory):
+   ```bash
+   flutter build apk --release
+   ```
+
+4. **Use debug build for testing** (much faster and lighter):
+   ```bash
+   flutter build apk --debug
+   ```
+
+5. **Reduce system load** - Stop heavy services/applications:
+   ```bash
+   # Check what's using memory
+   ps aux --sort=-%mem | head -n 10
+   ```
+
+6. **Check for swap thrashing** (indicator of severe memory pressure):
+   ```bash
+   # If vm.swappiness > 60, system is swapping heavily (bad for build performance)
+   cat /proc/sys/vm/swappiness
+   ```
+
+7. **Split into smaller builds** on low-memory VMs:
+   ```bash
+   # Build without analysis (saves ~500MB)
+   flutter build appbundle --release
+   
+   # Then separately run size analysis if needed
+   flutter build appbundle --target-platform android-arm64 --analyze-size 2>&1 | tee build_size.log
+   ```
+
+8. **As last resort - submit via CI/CD** instead of local build:
+   - Push to a feature branch
+   - Let GitHub Actions (or your CI system) build the release
+   - CI environments typically have more RAM available
+
+**If issue persists:**
+- Your system may have insufficient resources for Flutter/Android builds
+- Consider: 
+  - Adding more RAM to your build machine
+  - Using a cloud build service (GitHub Actions, Firebase App Distribution, etc.)
+  - Building on a different machine with more resources

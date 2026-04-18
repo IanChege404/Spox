@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:spotify_clone/DI/service_locator.dart';
 import 'package:spotify_clone/constants/constants.dart';
 import 'package:spotify_clone/services/spotify_auth_service.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:spotify_clone/services/hive_service.dart';
 
 /// Spotify OAuth Login Screen
 ///
@@ -44,41 +45,109 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
     });
 
     try {
+      print('[Login] Exchanging authorization code for access token...');
       await _authService.exchangeCodeForToken(authCode);
 
       if (mounted && _authService.isAuthenticated) {
-        // Navigate to home screen
+        print('[Login] ✓ Authentication successful, navigating to home...');
+        // Clear guest mode when user authenticates
+        final hiveService = locator<HiveService>();
+        await hiveService.clearGuestMode();
+        // Navigate to artist onboarding first if preferences haven't been set
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
+          final targetRoute = hiveService.hasCompletedArtistPreferences()
+              ? '/home'
+              : '/artist-preferences';
+          Navigator.of(context).pushReplacementNamed(targetRoute);
         }
+      } else {
+        throw Exception('Authentication failed - token not set');
       }
     } catch (e) {
+      print('[Login] ✗ Token exchange error: $e');
       setState(() {
-        _errorMessage = 'Authentication failed: ${e.toString()}';
+        _errorMessage = 'Failed to complete authentication:\n\n'
+            '${e.toString().replaceFirst('Exception: ', '')}\n\n'
+            'Please try again.';
         _isLoading = false;
       });
     }
   }
 
-  /// Initiate Spotify OAuth flow
+  /// Initiate Spotify OAuth flow via flutter_appauth
+  /// Uses in-app browser for seamless PKCE-based authentication
   Future<void> _startSpotifyLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      final authUrl = _authService.generateAuthorizationUrl();
-      if (await canLaunchUrl(Uri.parse(authUrl))) {
-        await launchUrl(
-          Uri.parse(authUrl),
-          mode: LaunchMode.externalApplication,
-        );
-      } else {
-        setState(() {
-          _errorMessage = 'Could not launch Spotify login';
-        });
+      print('[Login] Starting Spotify OAuth flow via flutter_appauth...');
+
+      // Use flutter_appauth for in-app browser authentication
+      final success = await _authService.startOAuthFlow();
+
+      if (mounted) {
+        if (success && _authService.isAuthenticated) {
+          print('[Login] ✓ Authentication successful, navigating to home...');
+          // Clear guest mode when user authenticates
+          final hiveService = locator<HiveService>();
+          await hiveService.clearGuestMode();
+          // Navigate to artist onboarding first if preferences haven't been set
+          if (mounted) {
+            final targetRoute = hiveService.hasCompletedArtistPreferences()
+                ? '/home'
+                : '/artist-preferences';
+            Navigator.of(context).pushReplacementNamed(targetRoute);
+          }
+        } else {
+          print('[Login] ⚠ OAuth flow was cancelled by user');
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
+      print('[Login] ✗ OAuth flow error: $e');
       setState(() {
-        _errorMessage = 'Error starting login: $e';
+        _errorMessage = 'Authentication failed:\n\n'
+            '${e.toString().replaceFirst('Exception: ', '')}\n\n'
+            'Please try again.';
+        _isLoading = false;
       });
     }
+  }
+
+  /// Continue as guest - enable guest mode and navigate to home
+  Future<void> _continueAsGuest() async {
+    try {
+      final authService = locator<SpotifyAuthService>();
+      final hiveService = locator<HiveService>();
+
+      // Enable guest mode
+      await authService.enableGuestMode();
+      await hiveService.saveGuestMode(true);
+
+      print('[Login] ✓ Guest mode enabled, navigating to home');
+
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    } catch (e) {
+      print('[Login] ✗ Error continuing as guest: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  /// Debug-only shortcut to bypass Spotify OAuth during development.
+  Future<void> _skipLoginForDevelopment() async {
+    if (!kDebugMode) return;
+    await _continueAsGuest();
   }
 
   @override
@@ -94,9 +163,24 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
               children: [
                 // Spotify Logo / Title
                 Image.asset(
-                  'images/icon/ic_launcher.png',
+                  'assets/icon/icon.png',
                   width: 100,
                   height: 100,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: MyColors.primaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.music_note,
+                        size: 50,
+                        color: Colors.black,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 40),
 
@@ -122,22 +206,53 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
 
                 // Login Button
                 if (!_isLoading && _errorMessage == null)
-                  ElevatedButton.icon(
-                    onPressed: _startSpotifyLogin,
-                    icon: Image.asset(
-                      'images/icon/ic_launcher.png',
-                      width: 24,
-                      height: 24,
-                    ),
-                    label: const Text('Login with Spotify'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: MyColors.primaryColor,
-                      foregroundColor: MyColors.blackColor,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                  Column(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _startSpotifyLogin,
+                        icon: Image.asset(
+                          'assets/icon/icon.png',
+                          width: 24,
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.music_note, size: 24);
+                          },
+                        ),
+                        label: const Text('Login with Spotify'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MyColors.primaryColor,
+                          foregroundColor: MyColors.blackColor,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      // Continue as Guest button
+                      OutlinedButton(
+                        onPressed: _continueAsGuest,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                              color: MyColors.primaryColor, width: 2),
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        child: const Text(
+                          'Continue as Guest',
+                          style: TextStyle(
+                            color: MyColors.primaryColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Note: For development testing, use scripts/get-test-token.js to obtain a valid token
+                      // and then manually test by setting it via debug commands, not hardcoded in UI
+                    ],
                   )
                 else if (_isLoading)
                   // Loading state
@@ -154,9 +269,33 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
                             ),
                       ),
                     ],
-                  )
-                else if (_errorMessage != null)
-                  // Error state
+                  ),
+
+                // DEBUG: Test login button (dev mode only)
+                if (kDebugMode && !_isLoading && _errorMessage == null)
+                  Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _skipLoginForDevelopment,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.black,
+                          minimumSize: const Size(double.infinity, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        child: const Text(
+                          '🔧 Dev: Skip Login',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                // Error state
+                if (_errorMessage != null)
                   Column(
                     children: [
                       Container(
@@ -197,6 +336,7 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
                         onPressed: () {
                           setState(() {
                             _errorMessage = null;
+                            _isLoading = false;
                           });
                           _startSpotifyLogin();
                         },

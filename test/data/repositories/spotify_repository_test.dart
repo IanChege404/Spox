@@ -254,16 +254,32 @@ void main() {
     group('New Releases', () {
       test('getNewReleases returns list of new albums', () async {
         // Arrange
-        when(() =>
-                mockApiService.getFeaturedPlaylists(limit: any(named: 'limit')))
-            .thenAnswer((_) async => [mockFeaturedPlaylistJson]);
+        when(() => mockApiService.getNewReleases(limit: any(named: 'limit')))
+            .thenAnswer((_) async => {
+                  'albums': {
+                    'items': [
+                      {
+                        'id': 'album_1',
+                        'name': 'New Album',
+                        'album_type': 'album',
+                        'images': [
+                          {'url': 'https://example.com/album.jpg'}
+                        ],
+                        'artists': [
+                          {'name': 'Test Artist'}
+                        ],
+                        'total_tracks': 12,
+                      }
+                    ]
+                  }
+                });
 
         // Act
         final result = await repository.getNewReleases(limit: 20);
 
         // Assert
         expect(result, isNotEmpty);
-        verify(() => mockApiService.getFeaturedPlaylists(limit: 20)).called(1);
+        verify(() => mockApiService.getNewReleases(limit: 20)).called(1);
       });
     });
 

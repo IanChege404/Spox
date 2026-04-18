@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:spotify_clone/bloc/theme/theme_event.dart'
     show ThemeEvent, ToggleThemeEvent, SetThemeEvent, AppThemeMode;
 import 'package:spotify_clone/bloc/theme/theme_state.dart';
+import 'package:spotify_clone/core/theme/app_theme.dart';
 import 'package:spotify_clone/services/hive_service.dart';
 
 class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
@@ -85,53 +86,11 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
 
   /// Build dark theme
   static ThemeData _buildDarkTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      primaryColor: const Color(0xFF1DB954), // Spotify green
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E1E1E),
-        elevation: 0,
-      ),
-      cardColor: const Color(0xFF282828),
-      textTheme: const TextTheme(
-        displayLarge:
-            TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        displayMedium:
-            TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        headlineSmall:
-            TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(color: Colors.white),
-        bodyMedium: TextStyle(color: Colors.white70),
-        bodySmall: TextStyle(color: Colors.white60),
-      ),
-    );
+    return AppTheme.darkTheme();
   }
 
   /// Build light theme
   static ThemeData _buildLightTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      primaryColor: const Color(0xFF1DB954), // Spotify green
-      scaffoldBackgroundColor: const Color(0xFFFAFAFA),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFFFFFFF),
-        elevation: 0,
-      ),
-      cardColor: const Color(0xFFF5F5F5),
-      textTheme: const TextTheme(
-        displayLarge:
-            TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        displayMedium:
-            TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        headlineSmall:
-            TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(color: Colors.black),
-        bodyMedium: TextStyle(color: Colors.black87),
-        bodySmall: TextStyle(color: Colors.black54),
-      ),
-    );
+    return AppTheme.lightTheme();
   }
 }

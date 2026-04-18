@@ -8,6 +8,11 @@ abstract class AlbumDatasource {
   Future<Album> albumList(String singer);
 }
 
+/// DEPRECATED: Local hardcoded album data
+/// Migration Status: Keep for backward compatibility only
+/// New implementations should use FirestoreDataSource instead.
+/// All local album data (4 albums, 75 tracks) has been migrated to Firestore.
+/// See: lib/core/utils/firestore_seed_data.dart for complete data setup
 class AlbumLocalDatasource extends AlbumDatasource {
   @override
   Future<Album> albumList(String singer) async {

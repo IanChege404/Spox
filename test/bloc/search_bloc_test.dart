@@ -5,17 +5,28 @@ import 'package:spotify_clone/bloc/search/search_bloc.dart';
 import 'package:spotify_clone/bloc/search/search_event.dart';
 import 'package:spotify_clone/bloc/search/search_state.dart';
 import 'package:spotify_clone/services/spotify_api_service.dart';
+import 'package:spotify_clone/services/hive_service.dart';
 
 class MockSpotifyApiService extends Mock implements SpotifyApiService {}
+
+class MockHiveService extends Mock implements HiveService {}
 
 void main() {
   group('SearchBloc', () {
     late MockSpotifyApiService mockSpotifyApiService;
+    late MockHiveService mockHiveService;
     late SearchBloc searchBloc;
 
     setUp(() {
       mockSpotifyApiService = MockSpotifyApiService();
-      searchBloc = SearchBloc(spotifyApiService: mockSpotifyApiService);
+      mockHiveService = MockHiveService();
+      when(() => mockHiveService.saveRecentSearch(
+            any(),
+            maxItems: any(named: 'maxItems'),
+          )).thenAnswer((_) async {});
+      searchBloc = SearchBloc(
+          spotifyApiService: mockSpotifyApiService,
+          hiveService: mockHiveService);
     });
 
     tearDown(() {
@@ -112,7 +123,7 @@ void main() {
       'emits Initial when SearchClearEvent is dispatched',
       build: () => searchBloc,
       seed: () => SearchLoaded(
-        songs: [],
+        tracks: [],
         artists: [],
         albums: [],
         playlists: [],
@@ -349,4 +360,3 @@ void main() {
     );
   });
 }
-

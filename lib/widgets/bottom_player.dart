@@ -3,7 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_bloc.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_event.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_state.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_bloc.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_event.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_state.dart';
 import 'package:spotify_clone/constants/constants.dart';
+import 'package:spotify_clone/data/model/album_track.dart';
+import 'package:spotify_clone/widgets/dynamic_image.dart';
 import 'package:spotify_clone/ui/listening_on_screen.dart';
 import 'package:spotify_clone/ui/track_view_screen.dart';
 
@@ -15,7 +20,6 @@ class BottomPlayer extends StatefulWidget {
 }
 
 class _BottomPlayerState extends State<BottomPlayer> {
-  bool _isLiked = false;
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AudioPlayerBloc, AudioPlayerState>(
@@ -83,29 +87,46 @@ class _BottomPlayerState extends State<BottomPlayer> {
                                       const TrackViewScreen(),
                               transitionsBuilder: (context, animation,
                                   secondaryAnimation, child) {
-                                const begin = Offset(0.0, 1.0);
-                                const end = Offset.zero;
+                                final curvedAnimation = CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeOutCubic,
+                                );
+                                final slideAnimation = Tween<Offset>(
+                                  begin: const Offset(0.0, 0.08),
+                                  end: Offset.zero,
+                                ).animate(curvedAnimation);
 
-                                final tween = Tween(begin: begin, end: end);
-                                final offsetAnimation = animation.drive(tween);
-                                return SlideTransition(
-                                  position: offsetAnimation,
-                                  child: child,
+                                return FadeTransition(
+                                  opacity: curvedAnimation,
+                                  child: SlideTransition(
+                                    position: slideAnimation,
+                                    child: child,
+                                  ),
                                 );
                               },
                             ),
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                height: 37,
-                                width: 37,
-                                decoration: BoxDecoration(
-                                  image: DecorationImage(
-                                    image: AssetImage(albumArt),
-                                    fit: BoxFit.cover,
+                              Hero(
+                                tag: _miniPlayerHeroTag(albumArt),
+                                child: Container(
+                                  height: 37,
+                                  width: 37,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[800],
+                                    borderRadius: BorderRadius.circular(3),
                                   ),
-                                  borderRadius: BorderRadius.circular(3),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: DynamicImage(
+                                      imageUrl: albumArt,
+                                      fit: BoxFit.cover,
+                                      width: 37,
+                                      height: 37,
+                                      backgroundColor: Colors.grey[800],
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -160,35 +181,83 @@ class _BottomPlayerState extends State<BottomPlayer> {
                                       const Color.fromARGB(255, 190, 190, 190),
                                   height: 24,
                                   width: 24,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.headphones,
+                                      size: 24,
+                                      color: const Color.fromARGB(
+                                          255, 190, 190, 190),
+                                    );
+                                  },
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.only(left: 7),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _isLiked = !_isLiked;
-                                    });
-                                  },
-                                  child: (_isLiked)
-                                      ? Row(
-                                          children: [
-                                            Image.asset(
-                                              'images/icon_heart_filled.png',
-                                              height: 22,
-                                              width: 22,
-                                            ),
-                                            const SizedBox(width: 9),
-                                          ],
+                              BlocBuilder<LikedSongsBloc, LikedSongsState>(
+                                builder: (context, likedState) {
+                                  final currentSong = (state is AudioPlaying)
+                                      ? AlbumTrack(
+                                          state.songTitle,
+                                          state.artist,
+                                          albumImage: state.albumArt,
                                         )
-                                      : Row(
-                                          children: [
-                                            Image.asset(
-                                                'images/icon_heart.png'),
-                                            const SizedBox(width: 9),
-                                          ],
-                                        ),
-                                ),
+                                      : (state is AudioPaused)
+                                          ? AlbumTrack(
+                                              state.songTitle,
+                                              state.artist,
+                                              albumImage: state.albumArt,
+                                            )
+                                          : null;
+
+                                  final isLiked = currentSong != null &&
+                                      likedState is LikedSongsLoaded &&
+                                      likedState.isSongLiked(currentSong);
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(left: 7),
+                                    child: GestureDetector(
+                                      onTap: currentSong == null
+                                          ? null
+                                          : () {
+                                              context
+                                                  .read<LikedSongsBloc>()
+                                                  .add(
+                                                    ToggleLikeEvent(
+                                                      song: currentSong,
+                                                      albumImage: currentSong
+                                                              .albumImage ??
+                                                          albumArt,
+                                                    ),
+                                                  );
+                                            },
+                                      child: Row(
+                                        children: [
+                                          Image.asset(
+                                            isLiked
+                                                ? 'images/icon_heart_filled.png'
+                                                : 'images/icon_heart.png',
+                                            height: 22,
+                                            width: 22,
+                                            color: isLiked
+                                                ? Colors.red
+                                                : Colors.grey,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Icon(
+                                                isLiked
+                                                    ? Icons.favorite
+                                                    : Icons.favorite_border,
+                                                size: 22,
+                                                color: isLiked
+                                                    ? Colors.red
+                                                    : Colors.grey,
+                                              );
+                                            },
+                                          ),
+                                          const SizedBox(width: 9),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                               InkWell(
                                 onTap: () {
@@ -270,4 +339,9 @@ class _BottomPlayerState extends State<BottomPlayer> {
       },
     );
   }
+}
+
+String _miniPlayerHeroTag(String albumArt) {
+  final resolved = albumArt.isEmpty ? 'images/home/AUSTIN.jpg' : albumArt;
+  return 'mini-player-art-$resolved';
 }

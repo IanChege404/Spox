@@ -2,13 +2,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:spotify_clone/bloc/history/history_event.dart';
 import 'package:spotify_clone/bloc/history/history_state.dart';
 import 'package:spotify_clone/data/model/album_track.dart';
+import 'package:spotify_clone/services/firebase_service.dart';
 import 'package:spotify_clone/services/hive_service.dart';
 
 class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
   final HiveService _hiveService;
+  final FirebaseService _firebaseService;
 
   HistoryBloc({required HiveService hiveService})
       : _hiveService = hiveService,
+        _firebaseService = FirebaseService(),
         super(const HistoryInitial()) {
     on<LoadPlayHistoryEvent>(_onLoadPlayHistory);
     on<RecordPlayEvent>(_onRecordPlay);
@@ -33,7 +36,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
         final entries = history
             .map((entry) => HistoryEntry(
                   trackName: entry['trackName'] as String? ?? 'Unknown',
-                  artists: entry['artists'] as String? ?? 'Unknown',
+                  artists: entry['singers'] as String? ?? 'Unknown',
                   playedAt: entry['playedAt'] is DateTime
                       ? entry['playedAt']
                       : DateTime.parse(entry['playedAt'].toString()),
@@ -60,6 +63,17 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
         albumImage: event.albumImage,
       );
 
+      if (_firebaseService.isInitialized) {
+        await _firebaseService.recordSongPlay(
+          spotifyId: '${event.trackName}_${event.artists}'
+              .toLowerCase()
+              .replaceAll(' ', '_'),
+          title: event.trackName,
+          artist: event.artists,
+          duration: Duration(seconds: event.duration ?? 0),
+        );
+      }
+
       // Reload history to reflect new entry
       if (state is HistoryLoaded) {
         final current = state as HistoryLoaded;
@@ -84,8 +98,7 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
     Emitter<HistoryState> emit,
   ) async {
     try {
-      // Clear play history in Hive (if method exists)
-      // For now, we'll just emit empty state
+      await _hiveService.clearPlayHistory();
       emit(const HistoryEmpty());
     } catch (e) {
       emit(HistoryError('Failed to clear history: ${e.toString()}'));

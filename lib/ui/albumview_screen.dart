@@ -4,12 +4,14 @@ import 'package:spotify_clone/bloc/album/album_bloc.dart';
 import 'package:spotify_clone/bloc/album/album_state.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_bloc.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_event.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_bloc.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_event.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_state.dart';
 import 'package:spotify_clone/constants/constants.dart';
 import 'package:spotify_clone/data/model/album.dart';
 import 'package:spotify_clone/data/model/album_track.dart';
 import 'package:spotify_clone/ui/album_control_screen.dart';
 import 'package:spotify_clone/ui/song_control_screen.dart';
-import 'package:spotify_clone/widgets/bottom_player.dart';
 import 'package:spotify_clone/widgets/skeleton_loaders.dart';
 import 'package:spotify_clone/widgets/stream_buttons.dart';
 
@@ -172,11 +174,13 @@ class _AlbumViewScreenState extends State<AlbumViewScreen> {
                                   const SizedBox(
                                     height: 20,
                                   ),
-                                  for (var element
-                                      in state.album.trackList) ...{
+                                  for (var i = 0;
+                                      i < state.album.trackList.length;
+                                      i++) ...{
                                     _AlbumTrackList(
-                                      track: element,
+                                      track: state.album.trackList[i],
                                       album: state.album,
+                                      index: i,
                                     ),
                                   }
                                 ],
@@ -263,7 +267,6 @@ class _AlbumViewScreenState extends State<AlbumViewScreen> {
                       ),
                     ],
                   ),
-                  const BottomPlayer(),
                 ],
               ),
             );
@@ -285,9 +288,14 @@ class _AlbumViewScreenState extends State<AlbumViewScreen> {
 }
 
 class _AlbumTrackList extends StatelessWidget {
-  const _AlbumTrackList({required this.track, required this.album});
+  const _AlbumTrackList({
+    required this.track,
+    required this.album,
+    required this.index,
+  });
   final AlbumTrack track;
   final Album album;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +316,8 @@ class _AlbumTrackList extends StatelessWidget {
                           songTitle: track.trackName,
                           artist: track.singers,
                           albumArt: 'images/${album.albumImage}',
+                          queueTracks: album.trackList,
+                          startIndex: index,
                         ),
                       );
                 }
@@ -361,6 +371,7 @@ class _AlbumTrackList extends StatelessWidget {
                     albumImage: album.albumImage,
                     singer: track.singers,
                     color: album.colorPallete[0],
+                    track: track,
                   ),
                 ),
               );
@@ -385,10 +396,12 @@ class _AlbumControlButtons extends StatefulWidget {
 }
 
 class _AlbumControlButtonsState extends State<_AlbumControlButtons> {
-  bool _isLiked = false;
-
   @override
   Widget build(BuildContext context) {
+    final representativeTrack = widget.album.trackList.isNotEmpty
+        ? widget.album.trackList.first
+        : AlbumTrack(widget.album.albumName, widget.album.singerName);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -445,19 +458,33 @@ class _AlbumControlButtonsState extends State<_AlbumControlButtons> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isLiked = !_isLiked;
-                      });
+                  BlocBuilder<LikedSongsBloc, LikedSongsState>(
+                    builder: (context, likedState) {
+                      final isLiked = likedState is LikedSongsLoaded &&
+                          likedState.isSongLiked(representativeTrack);
+
+                      return GestureDetector(
+                        onTap: () {
+                          context.read<LikedSongsBloc>().add(
+                                ToggleLikeEvent(
+                                  song: representativeTrack,
+                                  albumImage: widget.album.albumImage,
+                                ),
+                              );
+                        },
+                        child: isLiked
+                            ? Image.asset(
+                                'images/icon_heart_filled.png',
+                                height: 22,
+                                width: 20,
+                              )
+                            : Image.asset(
+                                'images/icon_heart.png',
+                                height: 22,
+                                width: 20,
+                              ),
+                      );
                     },
-                    child: (_isLiked)
-                        ? Image.asset('images/icon_heart.png')
-                        : Image.asset(
-                            'images/icon_heart_filled.png',
-                            height: 22,
-                            width: 20,
-                          ),
                   ),
                   Image.asset('images/icon_downloaded.png'),
                   GestureDetector(

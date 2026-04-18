@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:spotify_clone/bloc/queue/queue_bloc.dart';
+import 'package:spotify_clone/bloc/queue/queue_event.dart';
 import 'package:spotify_clone/constants/constants.dart';
+import 'package:spotify_clone/data/model/album_track.dart';
 import 'package:spotify_clone/ui/share_song_screen.dart';
 
 class SongControlScreen extends StatelessWidget {
@@ -8,11 +12,13 @@ class SongControlScreen extends StatelessWidget {
       required this.trackName,
       required this.color,
       required this.singer,
-      required this.albumImage});
+      required this.albumImage,
+      this.track});
   final String albumImage;
   final String trackName;
   final Color color;
   final String singer;
+  final AlbumTrack? track;
 
   @override
   Widget build(BuildContext context) {
@@ -64,8 +70,20 @@ class SongControlScreen extends StatelessWidget {
                     const _AlbumChip(
                         text: "Add to playlist",
                         image: "icon_add_to_playlist.png"),
-                    const _AlbumChip(
-                        text: "Add to queue", image: "icon_add_to_quoue.png"),
+                    GestureDetector(
+                      onTap: track == null
+                          ? null
+                          : () {
+                              context.read<QueueBloc>().add(
+                                    AddToQueueEvent(song: track!),
+                                  );
+                            },
+                      child: _AlbumChip(
+                        text: "Add to queue",
+                        image: "icon_add_to_quoue.png",
+                        disabled: track == null,
+                      ),
+                    ),
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -117,9 +135,14 @@ class SongControlScreen extends StatelessWidget {
 }
 
 class _AlbumChip extends StatelessWidget {
-  const _AlbumChip({required this.text, required this.image});
+  const _AlbumChip({
+    required this.text,
+    required this.image,
+    this.disabled = false,
+  });
   final String text;
   final String image;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {

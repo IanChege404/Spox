@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:spotify_clone/DI/service_locator.dart';
 import 'package:spotify_clone/constants/constants.dart';
 import 'package:spotify_clone/services/spotify_auth_service.dart';
+import 'package:spotify_clone/services/hive_service.dart';
 import 'package:spotify_clone/ui/home_screen.dart';
 import 'package:spotify_clone/ui/spotify_login_screen.dart';
 
@@ -32,15 +33,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToNextScreen() {
     final authService = locator<SpotifyAuthService>();
+    final hiveService = locator<HiveService>();
 
     Widget nextScreen;
 
-    // If authenticated, go to home
+    // Check if authenticated
     if (authService.isAuthenticated) {
       nextScreen = const HomeScreen();
-    } else {
-      // Otherwise show login screen
+      print('[SplashScreen] ✓ User authenticated, navigating to home');
+    }
+    // Check if guest mode is persisted from previous session
+    else if (hiveService.isGuestModePersisted()) {
+      nextScreen = const HomeScreen();
+      print(
+          '[SplashScreen] ✓ Guest session persisted, navigating to home as guest');
+    }
+    // Otherwise show login screen with Continue as Guest option
+    else {
       nextScreen = const SpotifyLoginScreen();
+      print('[SplashScreen] User not authenticated, showing login screen');
     }
 
     Navigator.pushReplacement(
@@ -60,10 +71,27 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: MyColors.blackColor,
       body: Center(
-        child: Image.asset(
-          'images/splah_logo.png',
+        child: SizedBox(
           height: 200,
           width: 200,
+          child: Image.asset(
+            'assets/icon/icon.png',
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback if image not found
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.music_note,
+                  size: 100,
+                  color: Colors.white,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

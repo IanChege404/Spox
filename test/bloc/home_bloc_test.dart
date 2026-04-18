@@ -4,12 +4,20 @@ import 'package:mocktail/mocktail.dart';
 import 'package:spotify_clone/bloc/home/home_bloc.dart';
 import 'package:spotify_clone/data/model/spotify_models.dart';
 import 'package:spotify_clone/data/repository/spotify_repository.dart';
+import 'package:spotify_clone/services/spotify_auth_service.dart';
+import 'package:spotify_clone/services/hive_service.dart';
 
 class MockSpotifyRepository extends Mock implements SpotifyRepository {}
+
+class MockSpotifyAuthService extends Mock implements SpotifyAuthService {}
+
+class MockHiveService extends Mock implements HiveService {}
 
 void main() {
   group('HomeBloc', () {
     late MockSpotifyRepository mockSpotifyRepository;
+    late MockSpotifyAuthService mockSpotifyAuthService;
+    late MockHiveService mockHiveService;
     late HomeBloc homeBloc;
 
     final mockFeaturedPlaylist = SpotifyPlaylist(
@@ -40,7 +48,25 @@ void main() {
 
     setUp(() {
       mockSpotifyRepository = MockSpotifyRepository();
-      homeBloc = HomeBloc(spotifyRepository: mockSpotifyRepository);
+      mockSpotifyAuthService = MockSpotifyAuthService();
+      mockHiveService = MockHiveService();
+      when(() => mockSpotifyAuthService.isAuthenticated).thenReturn(true);
+      when(() => mockHiveService.getSelectedArtists()).thenReturn([]);
+      when(() => mockSpotifyRepository.getGuestHomeData(
+            limit: any(named: 'limit'),
+          )).thenAnswer(
+        (_) async => GuestHomeData(
+          featuredPlaylists: [],
+          browseCategories: [],
+          categoryPlaylists: [],
+        ),
+      );
+
+      homeBloc = HomeBloc(
+        spotifyRepository: mockSpotifyRepository,
+        authService: mockSpotifyAuthService,
+        hiveService: mockHiveService,
+      );
     });
 
     tearDown(() {
@@ -78,9 +104,9 @@ void main() {
       ],
     );
 
-    // Error scenario: API failure when fetching featured playlists
+    // Error scenario: API failure falls back to guest state
     blocTest<HomeBloc, HomeState>(
-      'emits [HomeLoading, HomeError] when getFeaturedPlaylists fails',
+      'emits [HomeLoading, HomeLoadedGuest] when getFeaturedPlaylists fails',
       build: () => homeBloc,
       act: (bloc) {
         when(() => mockSpotifyRepository.getFeaturedPlaylists(
@@ -92,16 +118,17 @@ void main() {
       },
       expect: () => [
         isA<HomeLoading>(),
-        isA<HomeError>().having((state) => state.message, 'message',
-            contains('Failed to load home data')),
+        isA<HomeLoadedGuest>(),
       ],
     );
 
-    // Error scenario: Network timeout during user playlists fetch
+    // Error scenario: user playlists failure falls back to guest state
     blocTest<HomeBloc, HomeState>(
-      'emits [HomeLoading, HomeError] when getUserPlaylists fails',
+      'emits [HomeLoading, HomeLoadedGuest] when getUserPlaylists fails',
       build: () => homeBloc,
       act: (bloc) {
+        when(() => mockSpotifyRepository.getCurrentUserProfile())
+            .thenAnswer((_) async => mockUser);
         when(() => mockSpotifyRepository.getFeaturedPlaylists(
                 limit: any(named: 'limit')))
             .thenAnswer((_) async => [mockFeaturedPlaylist]);
@@ -113,8 +140,7 @@ void main() {
       },
       expect: () => [
         isA<HomeLoading>(),
-        isA<HomeError>().having((state) => state.message, 'message',
-            contains('Failed to load home data')),
+        isA<HomeLoadedGuest>(),
       ],
     );
 
@@ -186,6 +212,10 @@ void main() {
         verify(() => mockSpotifyRepository.getUserPlaylists(limit: 20))
             .called(1);
         verify(() => mockSpotifyRepository.getCurrentUserProfile()).called(1);
+        verifyNever(
+          () => mockSpotifyRepository.getGuestHomeData(
+              limit: any(named: 'limit')),
+        );
       },
     );
   });

@@ -39,6 +39,10 @@ dependencies:
   crypto: ^3.0.3
   url_launcher: ^6.2.0
 
+  # Authentication & Security
+  flutter_appauth: ^6.0.0
+  flutter_secure_storage: ^9.0.0
+
   # Local Database
   hive: ^2.2.3
   hive_flutter: ^1.1.0
@@ -52,15 +56,13 @@ dependencies:
   cloud_firestore: ^4.14.0
   google_sign_in: ^6.1.6
   firebase_analytics: ^10.7.0
+  firebase_storage: ^11.6.0
 
   # Charts for Stats Page
   fl_chart: ^0.65.0
 
   # Caching
   cached_network_image: ^3.3.0
-
-  # Screenshot for Sharing
-  screenshot: ^2.1.0
 
   # Share to social media
   share_plus: ^9.0.0
@@ -104,16 +106,16 @@ flutter:
 
 
   assets:
+    # Configuration
     - .env
-    - images/
-    - images/artists/
-    - images/podcasts/
-    - images/home/
-    - images/chill/
-    - images/drake mix/
-    - images/upbeat/
-    - images/2010/
+    
+    # Media
     - video/
+    - images/
+    
+    # App Assets
+    - assets/icon/
+    - assets/
 
   fonts:
     - family: AM

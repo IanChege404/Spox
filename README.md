@@ -56,6 +56,43 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a full architecture description.
 
 ---
 
+## 🎯 Free Tier Status (Portfolio Mode)
+
+This project is optimized to work with **free tier services** for portfolio/demo purposes:
+
+### ✅ What Works on Free Tier
+
+- **Spotify Development Mode** (free, 25 users max):
+  - Search API (unlimited calls)
+  - Browse playlists & categories
+  - 30-second audio previews (via Spotify Web API)
+  - User authentication (OAuth 2.0 PKCE)
+  - Playlist/album/artist metadata
+
+- **Firebase Spark Plan** (free, unlimited users):
+  - Firestore database (50k reads/day, 20k writes/day)
+  - Authentication (Google Sign-In, email)
+  - 1GB storage for user data
+
+### ⚠️ Limitations (Premium/Extended Quota Required)
+
+| Feature | Free Tier | What You Get |
+|---|---|---|
+| Full track streaming | ❌ Premium SDK required | 30-sec previews ✓ |
+| User profiles API | ❌ Premium subscription required | Fallback mock data ✓ |
+| Some album/artist details | ❌ Premium subscription required | Fallback mock data ✓ |
+| Beyond 25 users | ❌ Requires Extended Quota | Use mock data for demo ✓ |
+| Server-side functions | ❌ No Cloud Functions on Spark | Not needed for PKCE auth ✓ |
+
+**Current Implementation:**
+- All 403 (Forbidden) errors gracefully fall back to mock data
+- App functions 100% on free tier—just with placeholder content instead of live Spotify data
+- Perfect for showcasing UI, state management, and architecture
+
+See [SPOTIFY_SETUP.md](SPOTIFY_SETUP.md) for setup details and quota information.
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites

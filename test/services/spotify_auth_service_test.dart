@@ -71,6 +71,21 @@ class MockHttpClient implements HttpClient {
     _accessTokenCleared = true;
   }
 
+  @override
+  Future<void> processRetryQueue() async {
+    // Mock implementation - no queued requests to process in tests
+  }
+
+  @override
+  void rejectRetryQueue(DioException error) {
+    // Mock implementation - no queued requests to reject in tests
+  }
+
+  @override
+  void registerTokenRefreshCallback(Future<bool> Function() callback) {
+    // Mock implementation - token refresh not tested in these unit tests
+  }
+
   // Test helpers
   String? getLastAccessToken() =>
       _accessTokens.isNotEmpty ? _accessTokens.last : null;

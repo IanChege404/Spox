@@ -2,10 +2,12 @@ import 'package:bloc/bloc.dart';
 import 'package:spotify_clone/bloc/liked_songs/liked_songs_event.dart';
 import 'package:spotify_clone/bloc/liked_songs/liked_songs_state.dart';
 import 'package:spotify_clone/data/model/album_track.dart';
+import 'package:spotify_clone/services/firebase_service.dart';
 import 'package:spotify_clone/services/hive_service.dart';
 
 class LikedSongsBloc extends Bloc<LikedSongsEvent, LikedSongsState> {
   final HiveService _hiveService;
+  final FirebaseService _firebaseService = FirebaseService();
 
   LikedSongsBloc({required HiveService hiveService})
       : _hiveService = hiveService,
@@ -50,6 +52,7 @@ class LikedSongsBloc extends Bloc<LikedSongsEvent, LikedSongsState> {
   ) async {
     try {
       await _hiveService.saveLikedSong(event.song, event.albumImage);
+      await _syncLikeToFirebase(event.song, event.albumImage);
 
       final currentState = state;
       if (currentState is LikedSongsLoaded) {
@@ -78,6 +81,7 @@ class LikedSongsBloc extends Bloc<LikedSongsEvent, LikedSongsState> {
   ) async {
     try {
       await _hiveService.removeLikedSong(event.song);
+      await _removeLikeFromFirebase(event.song);
 
       final currentState = state;
       if (currentState is LikedSongsLoaded) {
@@ -127,10 +131,49 @@ class LikedSongsBloc extends Bloc<LikedSongsEvent, LikedSongsState> {
     Emitter<LikedSongsState> emit,
   ) async {
     try {
-      // Would need to implement clear in HiveService
+      await _hiveService.clearLikedSongs();
       emit(const LikedSongsEmpty());
     } catch (e) {
       emit(LikedSongsError('Failed to clear liked songs: $e'));
+    }
+  }
+
+  Future<void> _syncLikeToFirebase(AlbumTrack song, String albumImage) async {
+    try {
+      if (!_firebaseService.isInitialized ||
+          _firebaseService.currentUser == null) {
+        return;
+      }
+
+      final syncId = '${song.trackName}_${song.singers}'
+          .toLowerCase()
+          .replaceAll(' ', '_');
+
+      await _firebaseService.addLikedSong(
+        spotifyId: syncId,
+        title: song.trackName,
+        artist: song.singers,
+        albumArt: albumImage,
+      );
+    } catch (_) {
+      // Keep local flow resilient even if cloud sync fails.
+    }
+  }
+
+  Future<void> _removeLikeFromFirebase(AlbumTrack song) async {
+    try {
+      if (!_firebaseService.isInitialized ||
+          _firebaseService.currentUser == null) {
+        return;
+      }
+
+      final syncId = '${song.trackName}_${song.singers}'
+          .toLowerCase()
+          .replaceAll(' ', '_');
+
+      await _firebaseService.removeLikedSong(syncId);
+    } catch (_) {
+      // Keep local flow resilient even if cloud sync fails.
     }
   }
 }

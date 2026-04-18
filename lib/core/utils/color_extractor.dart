@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:spotify_clone/services/image_service.dart';
 
 /// Utility class for extracting dominant colors from images
 class ColorExtractor {
@@ -9,8 +10,9 @@ class ColorExtractor {
   /// If extraction fails, defaults to a dark grey color.
   static Future<Color> getDominantColor(String imageUrl) async {
     try {
+      final provider = _imageProvider(imageUrl);
       final paletteGenerator = await PaletteGenerator.fromImageProvider(
-        NetworkImage(imageUrl),
+        provider,
       );
       return paletteGenerator.dominantColor?.color ?? Colors.grey[900]!;
     } catch (e) {
@@ -25,8 +27,9 @@ class ColorExtractor {
   /// If extraction fails, defaults to a dark grey color.
   static Future<Color> getVibrantColor(String imageUrl) async {
     try {
+      final provider = _imageProvider(imageUrl);
       final paletteGenerator = await PaletteGenerator.fromImageProvider(
-        NetworkImage(imageUrl),
+        provider,
       );
       return paletteGenerator.vibrantColor?.color ??
           paletteGenerator.dominantColor?.color ??
@@ -43,8 +46,9 @@ class ColorExtractor {
   /// multiple colors extracted from the image.
   static Future<PaletteGenerator?> getPalette(String imageUrl) async {
     try {
+      final provider = _imageProvider(imageUrl);
       return await PaletteGenerator.fromImageProvider(
-        NetworkImage(imageUrl),
+        provider,
       );
     } catch (e) {
       print('Error extracting palette: $e');
@@ -85,5 +89,13 @@ class ColorExtractor {
         end: Alignment.bottomRight,
       );
     }
+  }
+
+  static ImageProvider _imageProvider(String imageUrl) {
+    final resolvedUrl = ImageService.resolveImageUrl(imageUrl);
+    if (ImageService.isNetworkUrl(resolvedUrl)) {
+      return NetworkImage(resolvedUrl);
+    }
+    return AssetImage(resolvedUrl);
   }
 }

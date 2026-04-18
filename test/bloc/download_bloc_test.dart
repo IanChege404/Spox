@@ -1,15 +1,27 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:spotify_clone/bloc/download/download_bloc.dart';
 import 'package:spotify_clone/bloc/download/download_event.dart';
 import 'package:spotify_clone/bloc/download/download_state.dart';
+import 'package:spotify_clone/services/hive_service.dart';
+
+class MockHiveService extends Mock implements HiveService {}
 
 void main() {
   group('DownloadBloc', () {
     late DownloadBloc downloadBloc;
+    late MockHiveService mockHiveService;
 
     setUp(() {
-      downloadBloc = DownloadBloc();
+      mockHiveService = MockHiveService();
+      when(() => mockHiveService.getDownloadedTracks()).thenReturn({});
+      when(() => mockHiveService.saveDownloadedTrack(any()))
+          .thenAnswer((_) async {});
+      when(() => mockHiveService.removeDownloadedTrack(any()))
+          .thenAnswer((_) async {});
+
+      downloadBloc = DownloadBloc(hiveService: mockHiveService);
     });
 
     tearDown(() {

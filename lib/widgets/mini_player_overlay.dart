@@ -55,8 +55,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     return BlocBuilder<AudioPlayerBloc, AudioPlayerState>(
       builder: (context, state) {
         // Show mini player when audio is playing or paused
-        final isPlayingOrPaused =
-            state is AudioPlaying || state is AudioPaused;
+        final isPlayingOrPaused = state is AudioPlaying || state is AudioPaused;
 
         if (isPlayingOrPaused && !_showMiniPlayer) {
           _showMiniPlayer = true;
@@ -138,12 +137,21 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
           return TrackViewScreen();
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
+          final curvedAnimation = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0, 0.1),
+            end: Offset.zero,
+          ).animate(curvedAnimation);
+
+          return FadeTransition(
+            opacity: curvedAnimation,
+            child: SlideTransition(
+              position: slideAnimation,
+              child: child,
+            ),
           );
         },
       ),

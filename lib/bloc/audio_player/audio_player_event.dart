@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:spotify_clone/data/model/album_track.dart';
 
 abstract class AudioPlayerEvent extends Equatable {
   const AudioPlayerEvent();
@@ -19,6 +21,7 @@ class PlaySongEvent extends AudioPlayerEvent {
   final String artist;
   final String albumArt;
   final List<String>? audioUrls; // For queue playback
+  final List<AlbumTrack>? queueTracks;
   final int startIndex;
 
   const PlaySongEvent({
@@ -27,12 +30,20 @@ class PlaySongEvent extends AudioPlayerEvent {
     required this.artist,
     required this.albumArt,
     this.audioUrls,
+    this.queueTracks,
     this.startIndex = 0,
   });
 
   @override
-  List<Object?> get props =>
-      [audioUrl, songTitle, artist, albumArt, audioUrls, startIndex];
+  List<Object?> get props => [
+        audioUrl,
+        songTitle,
+        artist,
+        albumArt,
+        audioUrls,
+        queueTracks,
+        startIndex,
+      ];
 }
 
 /// Event to pause playback
@@ -133,4 +144,14 @@ class SleepTimerTickEvent extends AudioPlayerEvent {
 
   @override
   List<Object?> get props => [remainingTime];
+}
+
+/// Internal event used to react to player state changes from just_audio
+class PlayerStateChangedEvent extends AudioPlayerEvent {
+  final PlayerState playerState;
+
+  const PlayerStateChangedEvent(this.playerState);
+
+  @override
+  List<Object?> get props => [playerState];
 }

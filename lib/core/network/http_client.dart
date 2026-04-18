@@ -7,11 +7,14 @@ class _RetryRequest {
   _RetryRequest(this.requestOptions, this.handler);
 }
 
+typedef TokenRefreshCallback = Future<bool> Function();
+
 class HttpClient {
   final Dio _dio = Dio();
   String? _accessToken;
   bool _isRefreshing = false;
   final List<_RetryRequest> _retryQueue = [];
+  TokenRefreshCallback? _onTokenExpired;
 
   HttpClient() {
     // Configure Dio with defaults
@@ -29,32 +32,60 @@ class HttpClient {
           }
           return handler.next(options);
         },
-        onError: (error, handler) {
-          // Handle 401 Unauthorized with token refresh (Phase 2A)
+        onError: (error, handler) async {
+          // Handle 401 Unauthorized with automatic token refresh
           if (error.response?.statusCode == 401 && !_isRefreshing) {
             _isRefreshing = true;
-            
+
             // Queue this request for retry after token refresh
             _retryQueue.add(_RetryRequest(error.requestOptions, handler));
-            
-            // Trigger token refresh (caller's responsibility to implement)
+
+            // Trigger token refresh via callback
+            if (_onTokenExpired != null) {
+              try {
+                final success = await _onTokenExpired!();
+                if (success) {
+                  print('[HttpClient] Token refreshed successfully, retrying queued requests');
+                  await processRetryQueue();
+                  return;
+                } else {
+                  print('[HttpClient] Token refresh failed');
+                  rejectRetryQueue(error);
+                  _isRefreshing = false;
+                  return handler.next(error);
+                }
+              } catch (e) {
+                print('[HttpClient] Error during token refresh: $e');
+                rejectRetryQueue(error);
+                _isRefreshing = false;
+                return handler.next(error);
+              }
+            }
+
+            // No refresh callback registered, pass error through
+            _isRefreshing = false;
+            _retryQueue.clear();
             return handler.next(error);
           }
-          
+
           // Log errors for debugging
           _logError(error);
           return handler.next(error);
         },
         onResponse: (response, handler) {
           // Reset retry queue on successful response
-          if (_isRefreshing) {
+          if (_isRefreshing && _retryQueue.isEmpty) {
             _isRefreshing = false;
-            _retryQueue.clear();
           }
           return handler.next(response);
         },
       ),
     );
+  }
+
+  /// Register a callback to refresh token when 401 occurs
+  void registerTokenRefreshCallback(TokenRefreshCallback callback) {
+    _onTokenExpired = callback;
   }
 
   /// Set the access token for authenticated requests
@@ -76,6 +107,56 @@ class HttpClient {
     if (error.response?.data != null) {
       print('Response: ${error.response?.data}');
     }
+  }
+
+  /// Process retry queue after token refresh succeeds
+  Future<void> processRetryQueue() async {
+    if (_retryQueue.isEmpty) {
+      return;
+    }
+
+    print(
+        '[HttpClient] Processing ${_retryQueue.length} queued requests after token refresh');
+    final queue = List.from(_retryQueue);
+    _retryQueue.clear();
+    _isRefreshing = false;
+
+    for (final request in queue) {
+      try {
+        // Retry the queued request with the new token
+        final response = await _dio.request(
+          request.requestOptions.path,
+          data: request.requestOptions.data,
+          queryParameters: request.requestOptions.queryParameters,
+          options: Options(
+            method: request.requestOptions.method,
+            headers: request.requestOptions.headers,
+          ),
+        );
+        request.handler.resolve(response);
+      } catch (e) {
+        request.handler.reject(DioException(
+          requestOptions: request.requestOptions,
+          error: e,
+          type: DioExceptionType.unknown,
+        ));
+      }
+    }
+  }
+
+  /// Reject all queued retry requests with an error
+  void rejectRetryQueue(DioException error) {
+    if (_retryQueue.isEmpty) {
+      return;
+    }
+
+    print(
+        '[HttpClient] Rejecting ${_retryQueue.length} queued requests due to token refresh failure');
+    for (final request in _retryQueue) {
+      request.handler.reject(error);
+    }
+    _retryQueue.clear();
+    _isRefreshing = false;
   }
 
   /// GET request
@@ -149,5 +230,4 @@ class HttpClient {
       rethrow;
     }
   }
-
 }

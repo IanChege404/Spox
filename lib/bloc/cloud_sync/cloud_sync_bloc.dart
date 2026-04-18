@@ -6,7 +6,7 @@ import 'package:spotify_clone/services/firebase_service.dart';
 
 class CloudSyncBloc extends Bloc<CloudSyncEvent, CloudSyncState> {
   final FirebaseService _firebaseService;
-  late StreamSubscription<List<Map<String, dynamic>>> _likedSongsSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _likedSongsSubscription;
 
   CloudSyncBloc({required FirebaseService firebaseService})
       : _firebaseService = firebaseService,
@@ -43,6 +43,7 @@ class CloudSyncBloc extends Bloc<CloudSyncEvent, CloudSyncState> {
       emit(const CloudSyncLoading());
 
       // Listen to Firestore stream
+      _likedSongsSubscription?.cancel();
       _likedSongsSubscription = _firebaseService.getLikedSongsStream().listen(
         (likedSongs) {
           emit(CloudSyncSuccess(likedSongs));
@@ -95,7 +96,7 @@ class CloudSyncBloc extends Bloc<CloudSyncEvent, CloudSyncState> {
 
   @override
   Future<void> close() async {
-    await _likedSongsSubscription.cancel();
+    await _likedSongsSubscription?.cancel();
     return super.close();
   }
 }

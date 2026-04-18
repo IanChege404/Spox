@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:spotify_clone/DI/service_locator.dart';
-import 'package:spotify_clone/bloc/album/album_bloc.dart';
-import 'package:spotify_clone/bloc/album/album_event.dart';
 import 'package:spotify_clone/bloc/home/home_bloc.dart';
-import 'package:spotify_clone/bloc/playlist/playlist_bloc.dart';
-import 'package:spotify_clone/bloc/playlist/playlist_event.dart';
 import 'package:spotify_clone/constants/constants.dart';
 import 'package:spotify_clone/data/model/spotify_models.dart';
-import 'package:spotify_clone/ui/albumview_screen.dart';
-import 'package:spotify_clone/ui/playlist_search_screen.dart';
+import 'package:spotify_clone/ui/liked_songs_screen.dart';
 import 'package:spotify_clone/ui/setting_screen.dart';
 import 'package:spotify_clone/widgets/bottom_player.dart';
 import 'package:spotify_clone/widgets/skeleton_loaders.dart';
@@ -96,10 +90,16 @@ class _HomeContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 15),
       child: CustomScrollView(
         slivers: [
-          const _Header(),
+          _Header(
+            quickAccessPlaylists:
+                userPlaylists.isNotEmpty ? userPlaylists : featuredPlaylists,
+          ),
           _FeaturedPlaylists(playlists: featuredPlaylists),
-          const _TopMixes(),
-          const _RecentPlays(),
+          _TopMixes(playlists: featuredPlaylists),
+          _RecentPlays(
+            playlists:
+                userPlaylists.isNotEmpty ? userPlaylists : featuredPlaylists,
+          ),
           const SliverPadding(
             padding: EdgeInsets.only(bottom: 100),
           ),
@@ -212,10 +212,16 @@ class _FeaturedPlaylists extends StatelessWidget {
 }
 
 class _RecentPlays extends StatelessWidget {
-  const _RecentPlays();
+  final List<SpotifyPlaylist> playlists;
+
+  const _RecentPlays({required this.playlists});
 
   @override
   Widget build(BuildContext context) {
+    if (playlists.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.only(top: 20),
@@ -236,167 +242,46 @@ class _RecentPlays extends StatelessWidget {
             ),
             SizedBox(
               height: 199,
-              child: ListView(
+              child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider(
-                            create: (context) {
-                              var bloc = PlaylistBloc(locator.get());
-                              bloc.add(PlaylistFetchEvent("Upbeat"));
-                              return bloc;
-                            },
-                            child: const PlaylistSearchScreen(
-                              cover: "Upbeat-Mix.jpg",
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: 133,
-                          width: 133,
-                          child: Image.asset("images/home/Upbeat-Mix.jpg"),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        const Text(
-                          "Upbeat Mix",
-                          style: TextStyle(
-                            fontFamily: "AB",
-                            fontSize: 12,
-                            color: MyColors.whiteColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Column(
+                itemCount: playlists.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 15),
+                itemBuilder: (context, index) {
+                  final playlist = playlists[index];
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
                         height: 133,
                         width: 133,
-                        child: Image.asset("images/home/Daily-Mix-1.jpg"),
+                        child: playlist.imageUrl?.isNotEmpty == true
+                            ? Image.network(
+                                playlist.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: MyColors.darGreyColor,
+                                  child: const Icon(
+                                    Icons.music_note,
+                                    color: MyColors.whiteColor,
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                color: MyColors.darGreyColor,
+                                child: const Icon(
+                                  Icons.music_note,
+                                  color: MyColors.whiteColor,
+                                ),
+                              ),
                       ),
-                      const SizedBox(
-                        height: 12,
-                      ),
-                      const Text(
-                        "Daily Mix 1",
-                        style: TextStyle(
-                          fontFamily: "AB",
-                          fontSize: 12,
-                          color: MyColors.whiteColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 15),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider(
-                            create: (context) {
-                              var bloc = AlbumBloc(locator.get());
-                              bloc.add(
-                                AlbumListEvent("Travis Scott"),
-                              );
-                              return bloc;
-                            },
-                            child: const AlbumViewScreen(),
-                          ),
-                        ),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: 133,
-                          width: 133,
-                          child: Image.asset("images/home/UTOPIA.jpg"),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        const Text(
-                          "UTOPIA",
-                          style: TextStyle(
-                            fontFamily: "AB",
-                            fontSize: 12,
-                            color: MyColors.whiteColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider(
-                            create: (context) {
-                              var bloc = AlbumBloc(locator.get());
-                              bloc.add(AlbumListEvent("21 Savage"));
-                              return bloc;
-                            },
-                            child: const AlbumViewScreen(),
-                          ),
-                        ),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: 133,
-                          width: 133,
-                          child: Image.asset("images/home/american-dream.jpg"),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        const Text(
-                          "american dream",
-                          style: TextStyle(
-                            fontFamily: "AB",
-                            fontSize: 12,
-                            color: MyColors.whiteColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 15,
-                  ),
-                  const Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 65,
-                        backgroundImage: AssetImage("images/artists/JID.jpg"),
-                      ),
+                      const SizedBox(height: 12),
                       SizedBox(
-                        height: 12,
-                      ),
-                      Center(
+                        width: 133,
                         child: Text(
-                          "JID",
-                          style: TextStyle(
+                          playlist.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
                             fontFamily: "AB",
                             fontSize: 12,
                             color: MyColors.whiteColor,
@@ -404,8 +289,8 @@ class _RecentPlays extends StatelessWidget {
                         ),
                       ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ],
@@ -416,10 +301,16 @@ class _RecentPlays extends StatelessWidget {
 }
 
 class _TopMixes extends StatelessWidget {
-  const _TopMixes();
+  final List<SpotifyPlaylist> playlists;
+
+  const _TopMixes({required this.playlists});
 
   @override
   Widget build(BuildContext context) {
+    if (playlists.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.only(top: 25),
@@ -439,117 +330,19 @@ class _TopMixes extends StatelessWidget {
             ),
             SizedBox(
               height: 199,
-              child: ListView(
+              child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider(
-                            create: (context) {
-                              var bloc = PlaylistBloc(locator.get());
-                              bloc.add(PlaylistFetchEvent('2010'));
-                              return bloc;
-                            },
-                            child: const PlaylistSearchScreen(
-                              cover: "2010s-mix.png",
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    child: const _MixChip(
-                      subtitle: "Travis Scott, Soul Chef, Kanye West and more",
-                      image: "2010s-mix.png",
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 15,
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider(
-                            create: (context) {
-                              var bloc = PlaylistBloc(locator.get());
-                              bloc.add(PlaylistFetchEvent("Chill"));
-                              return bloc;
-                            },
-                            child: const PlaylistSearchScreen(
-                                cover: "chill-mix.png"),
-                          ),
-                        ),
-                      );
-                    },
-                    child: const _MixChip(
-                      subtitle: "Talyor Swift, The Beatles and more",
-                      image: 'chill-mix.png',
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 15,
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider(
-                            create: (context) {
-                              var bloc = PlaylistBloc(locator.get());
-                              bloc.add(PlaylistFetchEvent("Upbeat"));
-                              return bloc;
-                            },
-                            child: const PlaylistSearchScreen(
-                              cover: "Upbeat-Mix.jpg",
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    child: const _MixChip(
-                      subtitle: "benny blanco, Darke and more",
-                      image: 'Upbeat-Mix.jpg',
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 15,
-                  ),
-                  const _MixChip(
-                    subtitle: "Baby keem, Travis Scott and Drake",
-                    image: "Offset-Mix.jpg",
-                  ),
-                  const SizedBox(
-                    width: 15,
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider(
-                            create: (context) {
-                              var bloc = PlaylistBloc(locator.get());
-                              bloc.add(PlaylistFetchEvent('Drake mix'));
-                              return bloc;
-                            },
-                            child: const PlaylistSearchScreen(
-                              cover: "Drake-Mix.jpg",
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    child: const _MixChip(
-                      subtitle: "JID, Baby Keem and 21 Savage",
-                      image: 'Drake-Mix.jpg',
-                    ),
-                  ),
-                ],
+                itemCount: playlists.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 15),
+                itemBuilder: (context, index) {
+                  final playlist = playlists[index];
+                  return _MixChip(
+                    subtitle: playlist.description?.isNotEmpty == true
+                        ? playlist.description!
+                        : 'by ${playlist.ownerName ?? 'Spotify'}',
+                    imageUrl: playlist.imageUrl,
+                  );
+                },
               ),
             ),
           ],
@@ -560,7 +353,9 @@ class _TopMixes extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  final List<SpotifyPlaylist> quickAccessPlaylists;
+
+  const _Header({required this.quickAccessPlaylists});
 
   @override
   Widget build(BuildContext context) {
@@ -667,149 +462,75 @@ class _Header extends StatelessWidget {
             const SizedBox(
               height: 20,
             ),
-            Column(
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      height: 55,
-                      width: (MediaQuery.of(context).size.width / 1.77) - 45,
-                      decoration: const BoxDecoration(
-                        color: MyColors.darGreyColor,
-                        borderRadius: BorderRadius.all(
-                          Radius.circular(5),
-                        ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LikedSongsScreen(),
                       ),
-                      child: Row(
-                        children: [
-                          Stack(
-                            alignment: AlignmentDirectional.center,
-                            children: [
-                              Container(
-                                height: 55,
-                                width: 55,
-                                decoration: const BoxDecoration(
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(5),
-                                    bottomLeft: Radius.circular(5),
+                    );
+                  },
+                  child: Container(
+                    height: 55,
+                    width: (MediaQuery.of(context).size.width / 1.77) - 45,
+                    decoration: const BoxDecoration(
+                      color: MyColors.darGreyColor,
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Stack(
+                          alignment: AlignmentDirectional.center,
+                          children: [
+                            Container(
+                              height: 55,
+                              width: 55,
+                              decoration: const BoxDecoration(
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(5),
+                                  bottomLeft: Radius.circular(5),
+                                ),
+                                image: DecorationImage(
+                                  image: AssetImage(
+                                    "images/liked_songs.png",
                                   ),
-                                  image: DecorationImage(
-                                    image: AssetImage(
-                                      "images/liked_songs.png",
-                                    ),
-                                    fit: BoxFit.cover,
-                                  ),
+                                  fit: BoxFit.cover,
                                 ),
                               ),
-                              Image.asset(
-                                'images/icon_heart_white.png',
-                                height: 20,
-                                width: 20,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(
-                            width: 10,
-                          ),
-                          const Text(
-                            "Liked Songs",
-                            style: TextStyle(
-                              fontFamily: "AB",
-                              fontSize: 12,
-                              color: MyColors.whiteColor,
                             ),
+                            Image.asset(
+                              'images/icon_heart_white.png',
+                              height: 20,
+                              width: 20,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          "Liked Songs",
+                          style: TextStyle(
+                            fontFamily: "AB",
+                            fontSize: 12,
+                            color: MyColors.whiteColor,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const _RecentPlaysChip(
-                      image: "artists/JID.jpg",
-                      title: "JID",
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BlocProvider(
-                              create: (context) {
-                                var bloc = AlbumBloc(locator.get());
-                                bloc.add(AlbumListEvent("21 Savage"));
-                                return bloc;
-                              },
-                              child: const AlbumViewScreen(),
-                            ),
-                          ),
-                        );
-                      },
-                      child: const _RecentPlaysChip(
-                        image: "home/american-dream.jpg",
-                        title: "american dream",
+                ...quickAccessPlaylists.take(5).map(
+                      (playlist) => _QuickAccessChip(
+                        title: playlist.name,
+                        imageUrl: playlist.imageUrl,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BlocProvider(
-                              create: (context) {
-                                var bloc = AlbumBloc(locator.get());
-                                bloc.add(AlbumListEvent("Travis Scott"));
-                                return bloc;
-                              },
-                              child: const AlbumViewScreen(),
-                            ),
-                          ),
-                        );
-                      },
-                      child: const _RecentPlaysChip(
-                        image: "home/UTOPIA.jpg",
-                        title: "UTOPIA",
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BlocProvider(
-                              create: (context) {
-                                var bloc = PlaylistBloc(locator.get());
-                                bloc.add(PlaylistFetchEvent("Upbeat"));
-                                return bloc;
-                              },
-                              child: const PlaylistSearchScreen(
-                                cover: "Upbeat-Mix.jpg",
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      child: const _RecentPlaysChip(
-                        image: "home/Upbeat-Mix.jpg",
-                        title: "Upbeat Mix",
-                      ),
-                    ),
-                    const _RecentPlaysChip(
-                      image: "home/Daily-Mix-1.jpg",
-                      title: "Daily Mix",
-                    ),
-                  ],
-                ),
               ],
             ),
           ],
@@ -819,10 +540,11 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _RecentPlaysChip extends StatelessWidget {
-  const _RecentPlaysChip({required this.image, required this.title});
+class _QuickAccessChip extends StatelessWidget {
+  const _QuickAccessChip({required this.title, required this.imageUrl});
   final String title;
-  final String image;
+  final String? imageUrl;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -845,9 +567,10 @@ class _RecentPlaysChip extends StatelessWidget {
                 bottomLeft: Radius.circular(5),
               ),
               image: DecorationImage(
-                image: AssetImage(
-                  "images/$image",
-                ),
+                image: imageUrl?.isNotEmpty == true
+                    ? NetworkImage(imageUrl!)
+                    : const AssetImage("images/liked_songs.png")
+                        as ImageProvider,
                 fit: BoxFit.cover,
               ),
             ),
@@ -855,8 +578,10 @@ class _RecentPlaysChip extends StatelessWidget {
           const SizedBox(
             width: 10,
           ),
-          AutoSizeText(
+          Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 10,
               color: Colors.white,
@@ -870,9 +595,9 @@ class _RecentPlaysChip extends StatelessWidget {
 }
 
 class _MixChip extends StatelessWidget {
-  const _MixChip({required this.subtitle, required this.image});
+  const _MixChip({required this.subtitle, required this.imageUrl});
   final String subtitle;
-  final String image;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -882,7 +607,25 @@ class _MixChip extends StatelessWidget {
         SizedBox(
           height: 153,
           width: 153,
-          child: Image.asset("images/home/$image"),
+          child: imageUrl?.isNotEmpty == true
+              ? Image.network(
+                  imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: MyColors.darGreyColor,
+                    child: const Icon(
+                      Icons.music_note,
+                      color: MyColors.whiteColor,
+                    ),
+                  ),
+                )
+              : Container(
+                  color: MyColors.darGreyColor,
+                  child: const Icon(
+                    Icons.music_note,
+                    color: MyColors.whiteColor,
+                  ),
+                ),
         ),
         const SizedBox(
           height: 10,

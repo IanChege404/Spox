@@ -4,6 +4,11 @@ abstract class ArtistDatasource {
   Future<List<Artist>> getArtistList();
 }
 
+/// DEPRECATED: Local hardcoded artist data
+/// Migration Status: Keep for backward compatibility only
+/// New implementations should use FirestoreDataSource instead.
+/// All local artist data (25 artists) has been migrated to Firestore.
+/// See: lib/core/utils/firestore_seed_data.dart for complete data setup
 class ArtistLocalDatasource extends ArtistDatasource {
   @override
   Future<List<Artist>> getArtistList() async {

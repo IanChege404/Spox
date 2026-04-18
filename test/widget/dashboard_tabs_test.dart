@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_bloc.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_event.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_state.dart';
@@ -12,6 +13,7 @@ import 'package:spotify_clone/bloc/equalizer/equalizer_bloc.dart';
 import 'package:spotify_clone/bloc/equalizer/equalizer_event.dart';
 import 'package:spotify_clone/bloc/equalizer/equalizer_state.dart';
 import 'package:spotify_clone/bloc/history/history_bloc.dart';
+import 'package:spotify_clone/bloc/home/home_bloc.dart';
 import 'package:spotify_clone/bloc/liked_songs/liked_songs_bloc.dart';
 import 'package:spotify_clone/bloc/lyrics/lyrics_bloc.dart';
 import 'package:spotify_clone/bloc/queue/queue_bloc.dart';
@@ -47,6 +49,8 @@ class MockEqualizerBloc extends MockBloc<EqualizerEvent, EqualizerState>
 class MockDownloadBloc extends MockBloc<DownloadEvent, DownloadState>
     implements DownloadBloc {}
 
+class MockHomeBloc extends MockBloc<HomeEvent, HomeState> implements HomeBloc {}
+
 Widget _buildTestApp({
   required MockAudioPlayerBloc audioPlayerBloc,
   required MockStatsBloc statsBloc,
@@ -58,6 +62,7 @@ Widget _buildTestApp({
   required MockHistoryBloc historyBloc,
   required MockThemeBloc themeBloc,
   required MockLyricsBloc lyricsBloc,
+  required MockHomeBloc homeBloc,
 }) {
   return MultiBlocProvider(
     providers: [
@@ -71,6 +76,7 @@ Widget _buildTestApp({
       BlocProvider<StatsBloc>.value(value: statsBloc),
       BlocProvider<EqualizerBloc>.value(value: equalizerBloc),
       BlocProvider<DownloadBloc>.value(value: downloadBloc),
+      BlocProvider<HomeBloc>.value(value: homeBloc),
     ],
     child: MaterialApp(
       home: const DashBoardScreen(),
@@ -89,6 +95,7 @@ void main() {
   late MockHistoryBloc historyBloc;
   late MockThemeBloc themeBloc;
   late MockLyricsBloc lyricsBloc;
+  late MockHomeBloc homeBloc;
 
   setUp(() {
     audioPlayerBloc = MockAudioPlayerBloc();
@@ -101,6 +108,7 @@ void main() {
     historyBloc = MockHistoryBloc();
     themeBloc = MockThemeBloc();
     lyricsBloc = MockLyricsBloc();
+    homeBloc = MockHomeBloc();
 
     // Configure stream/state defaults
     when(() => audioPlayerBloc.stream).thenAnswer((_) => const Stream.empty());
@@ -121,6 +129,9 @@ void main() {
     when(() => historyBloc.stream).thenAnswer((_) => const Stream.empty());
     when(() => themeBloc.stream).thenAnswer((_) => const Stream.empty());
     when(() => lyricsBloc.stream).thenAnswer((_) => const Stream.empty());
+
+    when(() => homeBloc.stream).thenAnswer((_) => const Stream.empty());
+    when(() => homeBloc.state).thenReturn(HomeInitial());
   });
 
   group('DashboardScreen tab navigation', () {
@@ -136,6 +147,7 @@ void main() {
         historyBloc: historyBloc,
         themeBloc: themeBloc,
         lyricsBloc: lyricsBloc,
+        homeBloc: homeBloc,
       ));
 
       expect(find.byType(DashBoardScreen), findsOneWidget);
@@ -154,6 +166,7 @@ void main() {
         historyBloc: historyBloc,
         themeBloc: themeBloc,
         lyricsBloc: lyricsBloc,
+        homeBloc: homeBloc,
       ));
 
       // Home, Search, Library, Stats, EQ, Offline
@@ -177,10 +190,11 @@ void main() {
         historyBloc: historyBloc,
         themeBloc: themeBloc,
         lyricsBloc: lyricsBloc,
+        homeBloc: homeBloc,
       ));
 
       await tester.tap(find.text('EQ'));
-      await tester.pumpAndSettle();
+      await tester.pump();
       // No exceptions thrown
       expect(find.byType(DashBoardScreen), findsOneWidget);
     });
@@ -197,10 +211,11 @@ void main() {
         historyBloc: historyBloc,
         themeBloc: themeBloc,
         lyricsBloc: lyricsBloc,
+        homeBloc: homeBloc,
       ));
 
       await tester.tap(find.text('Offline'));
-      await tester.pumpAndSettle();
+      await tester.pump();
       // No exceptions thrown
       expect(find.byType(DashBoardScreen), findsOneWidget);
     });

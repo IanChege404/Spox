@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:spotify_clone/bloc/theme/theme_bloc.dart';
+import 'package:spotify_clone/bloc/theme/theme_event.dart';
+import 'package:spotify_clone/bloc/theme/theme_state.dart';
 import 'package:spotify_clone/constants/constants.dart';
 import 'package:spotify_clone/ui/profile_screen.dart';
-import 'package:spotify_clone/widgets/bottom_player.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key});
@@ -30,30 +33,76 @@ class SettingScreen extends StatelessWidget {
           child: Image.asset("images/icon_arrow_left.png"),
         ),
       ),
-      body: const Stack(
-        alignment: AlignmentDirectional.bottomCenter,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: CustomScrollView(
-              slivers: [
-                _ProfileSection(),
-                _SettingsOptionChip(title: "Account"),
-                _SettingsOptionChip(title: "Data Saver"),
-                _SettingsOptionChip(title: "Langugages"),
-                _SettingsOptionChip(title: "Playback"),
-                _SettingsOptionChip(title: "Explicit Content"),
-                _SettingsOptionChip(title: "Devices"),
-                _SettingsOptionChip(title: "Car"),
-                _SettingsOptionChip(title: "Social"),
-                _SettingsOptionChip(title: "Voice Assistant & Apps"),
-                _SettingsOptionChip(title: "Audio Quality"),
-                _SettingsOptionChip(title: "Storage"),
-              ],
-            ),
-          ),
-          BottomPlayer(),
-        ],
+      body: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: CustomScrollView(
+          slivers: [
+            _ProfileSection(),
+            _ThemeSection(),
+            _SettingsOptionChip(title: "Account"),
+            _SettingsOptionChip(title: "Data Saver"),
+            _SettingsOptionChip(title: "Langugages"),
+            _SettingsOptionChip(title: "Playback"),
+            _SettingsOptionChip(title: "Explicit Content"),
+            _SettingsOptionChip(title: "Devices"),
+            _SettingsOptionChip(title: "Car"),
+            _SettingsOptionChip(title: "Social"),
+            _SettingsOptionChip(title: "Voice Assistant & Apps"),
+            _SettingsOptionChip(title: "Audio Quality"),
+            _SettingsOptionChip(title: "Storage"),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSection extends StatelessWidget {
+  const _ThemeSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 25),
+        child: BlocBuilder<ThemeBloc, ThemeState>(
+          builder: (context, state) {
+            final isDark = state is ThemeChanged ? state.isDark : true;
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xff191919),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: SwitchListTile.adaptive(
+                value: isDark,
+                onChanged: (_) {
+                  context.read<ThemeBloc>().add(const ToggleThemeEvent());
+                },
+                title: const Text(
+                  "Dark mode",
+                  style: TextStyle(
+                    fontFamily: "AM",
+                    fontSize: 16,
+                    color: MyColors.whiteColor,
+                  ),
+                ),
+                subtitle: const Text(
+                  "Switch between light and dark themes",
+                  style: TextStyle(
+                    fontFamily: "AM",
+                    fontSize: 12,
+                    color: MyColors.lightGrey,
+                  ),
+                ),
+                activeColor: MyColors.greenColor,
+                secondary: const Icon(
+                  Icons.dark_mode_outlined,
+                  color: MyColors.whiteColor,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

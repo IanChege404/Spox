@@ -1,8 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:spotify_clone/data/model/album.dart';
-import 'package:spotify_clone/data/model/artist.dart';
-import 'package:spotify_clone/data/model/playlist.dart';
-import 'package:spotify_clone/data/model/album_track.dart';
+import 'package:spotify_clone/data/model/spotify_models.dart';
 
 abstract class SearchState extends Equatable {
   const SearchState();
@@ -28,39 +25,39 @@ class SearchLoading extends SearchState {
 
 /// Loaded state - search results available
 class SearchLoaded extends SearchState {
-  final List<AlbumTrack> songs;
-  final List<Artist> artists;
-  final List<Album> albums;
-  final List<Playlist> playlists;
+  final List<SpotifyTrack> tracks;
+  final List<SpotifyAlbum> albums;
+  final List<SpotifyArtist> artists;
+  final List<SpotifyPlaylist> playlists;
   final String query;
 
   const SearchLoaded({
-    required this.songs,
-    required this.artists,
+    required this.tracks,
     required this.albums,
+    required this.artists,
     required this.playlists,
     required this.query,
   });
 
   /// Check if no results found
   bool get isEmpty =>
-      songs.isEmpty && artists.isEmpty && albums.isEmpty && playlists.isEmpty;
+      tracks.isEmpty && albums.isEmpty && artists.isEmpty && playlists.isEmpty;
 
   @override
-  List<Object?> get props => [songs, artists, albums, playlists, query];
+  List<Object?> get props => [tracks, albums, artists, playlists, query];
 
   /// Create a copy with modified fields
   SearchLoaded copyWith({
-    List<AlbumTrack>? songs,
-    List<Artist>? artists,
-    List<Album>? albums,
-    List<Playlist>? playlists,
+    List<SpotifyTrack>? tracks,
+    List<SpotifyAlbum>? albums,
+    List<SpotifyArtist>? artists,
+    List<SpotifyPlaylist>? playlists,
     String? query,
   }) {
     return SearchLoaded(
-      songs: songs ?? this.songs,
-      artists: artists ?? this.artists,
+      tracks: tracks ?? this.tracks,
       albums: albums ?? this.albums,
+      artists: artists ?? this.artists,
       playlists: playlists ?? this.playlists,
       query: query ?? this.query,
     );

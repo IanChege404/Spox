@@ -124,6 +124,8 @@ class QueueScreen extends StatelessWidget {
                                         artist: track.singers,
                                         albumArt:
                                             '', // Could pass album from context
+                                        queueTracks: state.queue,
+                                        startIndex: i,
                                       ),
                                     );
                               }

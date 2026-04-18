@@ -1,19 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:spotify_clone/DI/service_locator.dart';
-import 'package:spotify_clone/bloc/album/album_bloc.dart';
-import 'package:spotify_clone/bloc/album/album_event.dart';
+import 'package:spotify_clone/bloc/home/home_bloc.dart';
 import 'package:spotify_clone/constants/constants.dart';
-import 'package:spotify_clone/ui/albumview_screen.dart';
+import 'package:spotify_clone/data/model/spotify_models.dart';
+import 'package:spotify_clone/ui/liked_songs_screen.dart';
 import 'package:spotify_clone/ui/profile_screen.dart';
 import 'package:spotify_clone/ui/setting_screen.dart';
-import 'package:spotify_clone/widgets/album_chip.dart';
-import 'package:spotify_clone/widgets/artist_chip.dart';
-import 'package:spotify_clone/widgets/bottom_player.dart';
-import 'package:spotify_clone/widgets/song_chip.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
+
+  List<SpotifyPlaylist> _playlistsForState(HomeState state) {
+    if (state is HomeLoaded) {
+      final merged = <SpotifyPlaylist>[
+        ...state.userPlaylists,
+        ...state.featuredPlaylists,
+      ];
+      final seen = <String>{};
+      return merged.where((playlist) => seen.add(playlist.id)).toList();
+    }
+
+    if (state is HomeLoadedGuest) {
+      final merged = <SpotifyPlaylist>[
+        ...state.featuredPlaylists,
+        ...state.categoryPlaylists,
+      ];
+      final seen = <String>{};
+      return merged.where((playlist) => seen.add(playlist.id)).toList();
+    }
+
+    return [];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,99 +141,59 @@ class LibraryScreen extends StatelessWidget {
                   ),
                   const _LikedSongsSection(),
                   const _NewEpisodesSection(),
-                  SliverToBoxAdapter(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BlocProvider(
-                              create: (context) {
-                                var bloc = AlbumBloc(locator.get());
-                                bloc.add(AlbumListEvent("Drake"));
-                                return bloc;
-                              },
-                              child: const AlbumViewScreen(),
+                  BlocBuilder<HomeBloc, HomeState>(
+                    builder: (context, homeState) {
+                      if (homeState is HomeInitial) {
+                        context.read<HomeBloc>().add(const LoadHomeDataEvent());
+                      }
+
+                      if (homeState is HomeLoading ||
+                          homeState is HomeInitial) {
+                        return const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 20),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: MyColors.primaryColor,
+                              ),
                             ),
                           ),
                         );
-                      },
-                      child: const AlbumChip(
-                        image: "For-All-The-Dogs.jpg",
-                        albumName: "For All The Dogs",
-                        artistName: "Drake",
-                        size: 65,
-                        isDeletable: false,
-                      ),
-                    ),
-                  ),
-                  const ArtistChip(
-                    image: '21-Savage.jpg',
-                    name: "21 Savage",
-                    radius: 35,
-                    isDeletable: false,
-                  ),
-                  const SongChip(
-                    image: "UTOPIA.jpg",
-                    singerName: 'Travis Scott',
-                    songTitle: "I KNOW ?",
-                    size: 47,
-                    isDeletable: false,
-                  ),
-                  const ArtistChip(
-                    image: "Post-Malone.jpg",
-                    name: "Post Malone",
-                    radius: 35,
-                    isDeletable: false,
-                  ),
-                  SliverToBoxAdapter(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BlocProvider(
-                              create: (context) {
-                                var bloc = AlbumBloc(locator.get());
-                                bloc.add(AlbumListEvent("21 Savage"));
-                                return bloc;
-                              },
-                              child: const AlbumViewScreen(),
+                      }
+
+                      final playlists = _playlistsForState(homeState);
+                      if (playlists.isEmpty) {
+                        return const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Text(
+                              'No library content available yet',
+                              style: TextStyle(
+                                color: MyColors.lightGrey,
+                                fontFamily: 'AM',
+                              ),
                             ),
                           ),
                         );
-                      },
-                      child: const AlbumChip(
-                        image: "american-dream.jpg",
-                        albumName: "american dream",
-                        artistName: "21 Savage",
-                        size: 65,
-                        isDeletable: false,
-                      ),
-                    ),
-                  ),
-                  const ArtistChip(
-                    image: "J-Cole.jpg",
-                    name: "J Cole",
-                    radius: 35,
-                    isDeletable: false,
-                  ),
-                  const SongChip(
-                    image: "AUSTIN.jpg",
-                    singerName: 'Post Malone',
-                    songTitle: "Landmine",
-                    size: 47,
-                    isDeletable: false,
+                      }
+
+                      return SliverList.builder(
+                        itemCount: playlists.length.clamp(0, 12),
+                        itemBuilder: (context, index) {
+                          final playlist = playlists[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: _LibraryPlaylistTile(playlist: playlist),
+                          );
+                        },
+                      );
+                    },
                   ),
                   const SliverPadding(
                     padding: EdgeInsets.only(bottom: 130),
                   ),
                 ],
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 64),
-              child: BottomPlayer(),
             ),
           ],
         ),
@@ -289,54 +266,133 @@ class _LikedSongsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 15, bottom: 15),
-        child: Row(
-          children: [
-            Stack(
-              alignment: AlignmentDirectional.center,
-              children: [
-                Image.asset("images/liked_songs.png"),
-                Image.asset("images/icon_heart_white.png"),
-              ],
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const LikedSongsScreen(),
             ),
-            const SizedBox(
-              width: 10,
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Liked Songs",
-                  style: TextStyle(
-                    fontFamily: "AM",
-                    fontSize: 15,
-                    color: MyColors.whiteColor,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(
-                  height: 2,
-                ),
-                Row(
-                  children: [
-                    Image.asset("images/icon_pin.png"),
-                    const SizedBox(width: 5),
-                    const Text(
-                      "Playlist . 58 songs",
-                      style: TextStyle(
-                        fontFamily: "AM",
-                        color: MyColors.lightGrey,
-                        fontSize: 13,
-                      ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.only(top: 15, bottom: 15),
+          child: Row(
+            children: [
+              Stack(
+                alignment: AlignmentDirectional.center,
+                children: [
+                  Image.asset("images/liked_songs.png"),
+                  Image.asset("images/icon_heart_white.png"),
+                ],
+              ),
+              const SizedBox(
+                width: 10,
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Liked Songs",
+                    style: TextStyle(
+                      fontFamily: "AM",
+                      fontSize: 15,
+                      color: MyColors.whiteColor,
+                      fontWeight: FontWeight.w400,
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+                  ),
+                  const SizedBox(
+                    height: 2,
+                  ),
+                  Row(
+                    children: [
+                      Image.asset("images/icon_pin.png"),
+                      const SizedBox(width: 5),
+                      const Text(
+                        "Playlist . 58 songs",
+                        style: TextStyle(
+                          fontFamily: "AM",
+                          color: MyColors.lightGrey,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _LibraryPlaylistTile extends StatelessWidget {
+  final SpotifyPlaylist playlist;
+
+  const _LibraryPlaylistTile({required this.playlist});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: 60,
+            width: 60,
+            child: playlist.imageUrl?.isNotEmpty == true
+                ? Image.network(
+                    playlist.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: MyColors.darGreyColor,
+                      child: const Icon(
+                        Icons.music_note,
+                        color: MyColors.whiteColor,
+                      ),
+                    ),
+                  )
+                : Container(
+                    color: MyColors.darGreyColor,
+                    child: const Icon(
+                      Icons.music_note,
+                      color: MyColors.whiteColor,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                playlist.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'AM',
+                  fontSize: 15,
+                  color: MyColors.whiteColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Playlist • ${playlist.trackCount} songs',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'AM',
+                  fontSize: 13,
+                  color: MyColors.lightGrey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

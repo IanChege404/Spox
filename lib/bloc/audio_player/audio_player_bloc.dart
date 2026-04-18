@@ -1,15 +1,22 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_event.dart';
 import 'package:spotify_clone/bloc/audio_player/audio_player_state.dart';
 import 'package:spotify_clone/bloc/history/history_event.dart';
 import 'package:spotify_clone/bloc/history/history_bloc.dart';
+import 'package:spotify_clone/bloc/queue/queue_bloc.dart';
+import 'package:spotify_clone/bloc/queue/queue_event.dart';
+import 'package:spotify_clone/data/model/album_track.dart';
+import 'package:spotify_clone/services/audio_handler.dart';
 import 'package:spotify_clone/services/audio_player_service.dart';
 
 class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   final AudioPlayerService _audioPlayerService;
   final HistoryBloc? _historyBloc;
+  final QueueBloc? _queueBloc;
+  final AppAudioHandler? _audioHandler;
   late StreamSubscription<Duration?> _positionSubscription;
   late StreamSubscription<Duration?> _durationSubscription;
   late StreamSubscription<PlayerState> _playerStateSubscription;
@@ -28,8 +35,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   AudioPlayerBloc({
     required AudioPlayerService audioPlayerService,
     HistoryBloc? historyBloc,
+    QueueBloc? queueBloc,
+    AppAudioHandler? audioHandler,
   })  : _audioPlayerService = audioPlayerService,
         _historyBloc = historyBloc,
+        _queueBloc = queueBloc,
+        _audioHandler = audioHandler,
         super(const AudioPlayerInitial()) {
     on<PlaySongEvent>(_onPlaySong);
     on<PauseSongEvent>(_onPauseSong);
@@ -45,6 +56,7 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
     on<SetSleepTimerEvent>(_onSetSleepTimer);
     on<CancelSleepTimerEvent>(_onCancelSleepTimer);
     on<SleepTimerTickEvent>(_onSleepTimerTick);
+    on<PlayerStateChangedEvent>(_onPlayerStateChanged);
 
     _setupStreamListeners();
   }
@@ -65,7 +77,7 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
 
     _playerStateSubscription =
         _audioPlayerService.playerStateStream.listen((playerState) {
-      _handlePlayerStateChange(playerState);
+      add(PlayerStateChangedEvent(playerState));
     });
 
     _sequenceStateSubscription =
@@ -78,9 +90,40 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   }
 
   /// Handle player state changes
-  void _handlePlayerStateChange(PlayerState playerState) {
-    // Handle state changes through events instead of direct emit
-    // This will be properly handled through the event-driven architecture
+  void _onPlayerStateChanged(
+    PlayerStateChangedEvent event,
+    Emitter<AudioPlayerState> emit,
+  ) {
+    final playerState = event.playerState;
+    final currentState = state;
+
+    if (playerState.processingState == ProcessingState.completed) {
+      if (currentState is AudioPlaying) {
+        emit(AudioCompleted(currentState.songTitle));
+      } else if (currentState is AudioPaused) {
+        emit(AudioCompleted(currentState.songTitle));
+      }
+      return;
+    }
+
+    if (currentState is AudioPlaying) {
+      emit(AudioPlaying(
+        songTitle: currentState.songTitle,
+        artist: currentState.artist,
+        albumArt: currentState.albumArt,
+        current: currentState.current,
+        total: currentState.total,
+        isBuffering: playerState.processingState == ProcessingState.buffering,
+      ));
+    } else if (currentState is AudioPaused) {
+      emit(AudioPaused(
+        songTitle: currentState.songTitle,
+        artist: currentState.artist,
+        albumArt: currentState.albumArt,
+        current: currentState.current,
+        total: currentState.total,
+      ));
+    }
   }
 
   /// Handle play song event
@@ -95,15 +138,85 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
       _currentSongArt = event.albumArt;
       _hasRecordedCurrentSong = false;
 
-      // If we have multiple URLs (queue), initialize playlist
-      if (event.audioUrls != null && event.audioUrls!.isNotEmpty) {
-        await _audioPlayerService.initializePlaylist(
-          event.audioUrls!,
-          startIndex: event.startIndex,
+      final queueTracks = event.queueTracks;
+
+      if (queueTracks != null && queueTracks.isNotEmpty) {
+        final queueUrls = queueTracks
+            .map((track) => track.audioUrl)
+            .whereType<String>()
+            .where((url) => url.isNotEmpty)
+            .toList();
+
+        if (queueUrls.isEmpty) {
+          throw StateError('Queue does not contain playable audio URLs');
+        }
+
+        final queueStartIndex = event.startIndex.clamp(0, queueUrls.length - 1);
+
+        _queueBloc?.add(
+          InitializeQueueEvent(
+            songs: queueTracks,
+            currentIndex: queueStartIndex,
+          ),
         );
+
+        final handler = _audioHandler;
+        if (handler != null) {
+          final metadata = queueTracks
+              .map(
+                (track) => MediaItem(
+                  id: track.audioUrl ?? track.trackName,
+                  title: track.trackName,
+                  artist: track.singers,
+                  artUri: event.albumArt.isNotEmpty
+                      ? Uri.tryParse(event.albumArt)
+                      : null,
+                ),
+              )
+              .toList();
+
+          await handler.initializePlaylist(
+            queueUrls,
+            metadata,
+            startIndex: queueStartIndex,
+          );
+        } else {
+          await _audioPlayerService.initializePlaylist(
+            queueUrls,
+            startIndex: queueStartIndex,
+          );
+        }
       } else {
         // Single song playback
-        await _audioPlayerService.playSingle(event.audioUrl);
+        _queueBloc?.add(
+          InitializeQueueEvent(
+            songs: [
+              AlbumTrack(
+                event.songTitle,
+                event.artist,
+                audioUrl: event.audioUrl,
+              ),
+            ],
+            currentIndex: 0,
+          ),
+        );
+
+        final handler = _audioHandler;
+        if (handler != null) {
+          await handler.playSingle(
+            event.audioUrl,
+            MediaItem(
+              id: event.audioUrl,
+              title: event.songTitle,
+              artist: event.artist,
+              artUri: event.albumArt.isNotEmpty
+                  ? Uri.tryParse(event.albumArt)
+                  : null,
+            ),
+          );
+        } else {
+          await _audioPlayerService.playSingle(event.audioUrl);
+        }
       }
 
       emit(AudioPlaying(
@@ -123,7 +236,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   FutureOr<void> _onPauseSong(
       PauseSongEvent event, Emitter<AudioPlayerState> emit) async {
     try {
-      await _audioPlayerService.pause();
+      final handler = _audioHandler;
+      if (handler != null) {
+        await handler.pause();
+      } else {
+        await _audioPlayerService.pause();
+      }
 
       if (state is AudioPlaying) {
         final playingState = state as AudioPlaying;
@@ -144,7 +262,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   FutureOr<void> _onResumeSong(
       ResumeSongEvent event, Emitter<AudioPlayerState> emit) async {
     try {
-      await _audioPlayerService.play();
+      final handler = _audioHandler;
+      if (handler != null) {
+        await handler.play();
+      } else {
+        await _audioPlayerService.play();
+      }
 
       if (state is AudioPaused) {
         final pausedState = state as AudioPaused;
@@ -165,7 +288,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   FutureOr<void> _onStopSong(
       StopSongEvent event, Emitter<AudioPlayerState> emit) async {
     try {
-      await _audioPlayerService.stop();
+      final handler = _audioHandler;
+      if (handler != null) {
+        await handler.stop();
+      } else {
+        await _audioPlayerService.stop();
+      }
       emit(const AudioStopped());
     } catch (e) {
       emit(AudioError('Failed to stop: ${e.toString()}'));
@@ -176,7 +304,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   FutureOr<void> _onSeekTo(
       SeekToEvent event, Emitter<AudioPlayerState> emit) async {
     try {
-      await _audioPlayerService.seek(event.position);
+      final handler = _audioHandler;
+      if (handler != null) {
+        await handler.seek(event.position);
+      } else {
+        await _audioPlayerService.seek(event.position);
+      }
 
       if (state is AudioPlaying) {
         final playingState = state as AudioPlaying;
@@ -206,7 +339,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   FutureOr<void> _onSkipNext(
       SkipNextEvent event, Emitter<AudioPlayerState> emit) async {
     try {
-      await _audioPlayerService.skipToNext();
+      final handler = _audioHandler;
+      if (handler != null) {
+        await handler.skipToNext();
+      } else {
+        await _audioPlayerService.skipToNext();
+      }
     } catch (e) {
       emit(AudioError('Failed to skip to next: ${e.toString()}'));
     }
@@ -216,7 +354,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   FutureOr<void> _onSkipPrevious(
       SkipPreviousEvent event, Emitter<AudioPlayerState> emit) async {
     try {
-      await _audioPlayerService.skipToPrevious();
+      final handler = _audioHandler;
+      if (handler != null) {
+        await handler.skipToPrevious();
+      } else {
+        await _audioPlayerService.skipToPrevious();
+      }
     } catch (e) {
       emit(AudioError('Failed to skip to previous: ${e.toString()}'));
     }
@@ -246,7 +389,12 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
   FutureOr<void> _onSetPlaybackSpeed(
       SetPlaybackSpeedEvent event, Emitter<AudioPlayerState> emit) async {
     try {
-      await _audioPlayerService.setSpeed(event.speed);
+      final handler = _audioHandler;
+      if (handler != null) {
+        await handler.setSpeed(event.speed);
+      } else {
+        await _audioPlayerService.setSpeed(event.speed);
+      }
     } catch (e) {
       emit(AudioError('Failed to set playback speed: ${e.toString()}'));
     }
@@ -290,7 +438,7 @@ class AudioPlayerBloc extends Bloc<AudioPlayerEvent, AudioPlayerState> {
     _hasRecordedCurrentSong = true;
 
     // Dispatch RecordPlayEvent to HistoryBloc
-    _historyBloc!.add(
+    _historyBloc.add(
       RecordPlayEvent(
         trackName: _currentSongTitle ?? audioState.songTitle,
         artists: _currentSongArtist ?? audioState.artist,

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_bloc.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_event.dart';
+import 'package:spotify_clone/bloc/liked_songs/liked_songs_state.dart';
 import 'package:spotify_clone/bloc/playlist/playlist_bloc.dart';
 import 'package:spotify_clone/bloc/playlist/playlist_state.dart';
 import 'package:spotify_clone/constants/constants.dart';
-import 'package:spotify_clone/widgets/bottom_player.dart';
+import 'package:spotify_clone/data/model/album_track.dart';
+import 'package:spotify_clone/data/model/spotify_models.dart';
 import 'package:spotify_clone/widgets/stream_buttons.dart';
 
 class PlaylistSearchScreen extends StatelessWidget {
@@ -28,7 +33,7 @@ class PlaylistSearchScreen extends StatelessWidget {
         body: SafeArea(
           child: BlocBuilder<PlaylistBloc, PlaylistState>(
             builder: (context, state) {
-              if (state is PlaylistResponseState) {
+              if (state is PlaylistLoaded) {
                 return Stack(
                   alignment: AlignmentDirectional.bottomCenter,
                   children: [
@@ -39,7 +44,13 @@ class PlaylistSearchScreen extends StatelessWidget {
                           _Header(
                             cover: cover,
                           ),
-                          _PlaylistActionButtons(time: state.playlist.time),
+                          _PlaylistActionButtons(
+                            time: state.total.toString(),
+                            cover: cover,
+                            representativeTrack: state.tracks.isNotEmpty
+                                ? state.tracks.first
+                                : null,
+                          ),
                           _SongList(state: state),
                           const SliverPadding(
                             padding: EdgeInsets.only(bottom: 50),
@@ -47,7 +58,6 @@ class PlaylistSearchScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const BottomPlayer(),
                   ],
                 );
               }
@@ -71,7 +81,7 @@ class PlaylistSearchScreen extends StatelessWidget {
 
 class _SongList extends StatelessWidget {
   const _SongList({required this.state});
-  final PlaylistResponseState state;
+  final PlaylistLoaded state;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +101,8 @@ class _SongList extends StatelessWidget {
                         height: 48,
                         width: 48,
                         child: Image.asset(
-                            'images/${state.playlist.tracks[index].image}'),
+                          'images/${state.tracks[index].imageUrl ?? "placeholder.jpg"}',
+                        ),
                       ),
                       const SizedBox(width: 5),
                       Column(
@@ -100,7 +111,7 @@ class _SongList extends StatelessWidget {
                           SizedBox(
                             width: MediaQuery.of(context).size.width - 115,
                             child: Text(
-                              state.playlist.tracks[index].trackName,
+                              state.tracks[index].name,
                               style: const TextStyle(
                                 fontFamily: "AM",
                                 fontSize: 16,
@@ -110,7 +121,9 @@ class _SongList extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            state.playlist.tracks[index].singers,
+                            state.tracks[index].artists
+                                .map((a) => a.name)
+                                .join(', '),
                             style: const TextStyle(
                               fontFamily: "AM",
                               color: MyColors.lightGrey,
@@ -124,9 +137,12 @@ class _SongList extends StatelessWidget {
                   Image.asset("images/icon_more.png"),
                 ],
               ),
-            );
+            )
+                .animate(delay: Duration(milliseconds: index * 90))
+                .fadeIn(duration: const Duration(milliseconds: 220))
+                .slideX(begin: 0.08, end: 0, curve: Curves.easeOut);
           },
-          childCount: state.playlist.tracks.length,
+          childCount: state.tracks.length,
         ),
       ),
     );
@@ -134,8 +150,14 @@ class _SongList extends StatelessWidget {
 }
 
 class _PlaylistActionButtons extends StatefulWidget {
-  const _PlaylistActionButtons({required this.time});
+  const _PlaylistActionButtons({
+    required this.time,
+    required this.cover,
+    this.representativeTrack,
+  });
   final String time;
+  final String cover;
+  final SpotifyTrack? representativeTrack;
 
   @override
   State<_PlaylistActionButtons> createState() => _PlaylistActionButtonsState();
@@ -144,9 +166,19 @@ class _PlaylistActionButtons extends StatefulWidget {
 class _PlaylistActionButtonsState extends State<_PlaylistActionButtons> {
   bool _isInPlay = false;
   bool _isDownloaded = false;
-  bool _isLiked = false;
+
   @override
   Widget build(BuildContext context) {
+    final rep = widget.representativeTrack;
+    final repSong = rep == null
+        ? null
+        : AlbumTrack(
+            rep.name,
+            rep.artists.map((artist) => artist.name).join(', '),
+            audioUrl: rep.previewUrl,
+            albumImage: rep.imageUrl ?? widget.cover,
+          );
+
     return SliverToBoxAdapter(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -203,19 +235,33 @@ class _PlaylistActionButtonsState extends State<_PlaylistActionButtons> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isLiked = !_isLiked;
-                        });
+                    BlocBuilder<LikedSongsBloc, LikedSongsState>(
+                      builder: (context, likedState) {
+                        final isLiked = repSong != null &&
+                            likedState is LikedSongsLoaded &&
+                            likedState.isSongLiked(repSong);
+
+                        return GestureDetector(
+                          onTap: repSong == null
+                              ? null
+                              : () {
+                                  context.read<LikedSongsBloc>().add(
+                                        ToggleLikeEvent(
+                                          song: repSong,
+                                          albumImage: repSong.albumImage ??
+                                              widget.cover,
+                                        ),
+                                      );
+                                },
+                          child: Image.asset(
+                            isLiked
+                                ? 'images/icon_heart_filled.png'
+                                : 'images/icon_heart.png',
+                            height: 19,
+                            width: 20,
+                          ),
+                        );
                       },
-                      child: (_isLiked)
-                          ? Image.asset(
-                              'images/icon_heart_filled.png',
-                              height: 19,
-                              width: 20,
-                            )
-                          : Image.asset('images/icon_heart.png'),
                     ),
                     GestureDetector(
                       onTap: () {

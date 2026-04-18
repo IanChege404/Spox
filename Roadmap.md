@@ -171,6 +171,8 @@ class LikedSong {
 ## Phase 3 — UI/UX Polish ✨
 > *Priority: MEDIUM · Makes it feel premium.*
 
+**Implementation Status:** Completed in the codebase: persistent mini player, dynamic album-art color theming, skeleton loading screens, smoother transitions/hero motion, staggered list animation, and dark/light theme persistence.
+
 ### 3.1 — Persistent Mini Player
 
 **Current State:** No mini player exists between screens.

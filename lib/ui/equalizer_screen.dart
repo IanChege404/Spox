@@ -13,7 +13,13 @@ class EqualizerScreen extends StatefulWidget {
 }
 
 class _EqualizerScreenState extends State<EqualizerScreen> {
-  static const List<String> _bandLabels = ['60Hz', '230Hz', '910Hz', '3.6kHz', '14kHz'];
+  static const List<String> _bandLabels = [
+    '60Hz',
+    '230Hz',
+    '910Hz',
+    '3.6kHz',
+    '14kHz'
+  ];
 
   @override
   void initState() {
@@ -36,13 +42,13 @@ class _EqualizerScreenState extends State<EqualizerScreen> {
         actions: [
           BlocBuilder<EqualizerBloc, EqualizerState>(
             builder: (context, state) {
-              final enabled =
-                  state is EqualizerLoaded ? state.enabled : false;
+              final enabled = state is EqualizerLoaded ? state.enabled : false;
               return Switch(
                 value: enabled,
-                activeColor: MyColors.greenColor,
-                onChanged: (_) =>
-                    context.read<EqualizerBloc>().add(const ToggleEqualizerEvent()),
+                activeThumbColor: MyColors.greenColor,
+                onChanged: (_) => context
+                    .read<EqualizerBloc>()
+                    .add(const ToggleEqualizerEvent()),
               );
             },
           ),
@@ -104,12 +110,11 @@ class _EqualizerBody extends StatelessWidget {
             children: kEqualizerPresets.keys.map((preset) {
               final isSelected = state.activePreset == preset;
               return GestureDetector(
-                onTap: () => context
-                    .read<EqualizerBloc>()
-                    .add(ApplyPresetEvent(preset)),
+                onTap: () =>
+                    context.read<EqualizerBloc>().add(ApplyPresetEvent(preset)),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? MyColors.greenColor
@@ -156,8 +161,9 @@ class _EqualizerBody extends StatelessWidget {
           // Reset button
           Center(
             child: TextButton(
-              onPressed: () =>
-                  context.read<EqualizerBloc>().add(const ResetEqualizerEvent()),
+              onPressed: () => context
+                  .read<EqualizerBloc>()
+                  .add(const ResetEqualizerEvent()),
               child: const Text(
                 'Reset to Flat',
                 style: TextStyle(
@@ -188,7 +194,8 @@ class _BandSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayValue = value >= 0 ? '+${value.toStringAsFixed(1)}' : value.toStringAsFixed(1);
+    final displayValue =
+        value >= 0 ? '+${value.toStringAsFixed(1)}' : value.toStringAsFixed(1);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(

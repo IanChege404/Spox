@@ -4,6 +4,11 @@ abstract class PodcastDatasource {
   Future<List<Podcast>> getPodcastList();
 }
 
+/// DEPRECATED: Local hardcoded podcast data
+/// Migration Status: Keep for backward compatibility only
+/// New implementations should use FirestoreDataSource instead.
+/// All local podcast data (15 podcasts) has been migrated to Firestore.
+/// See: lib/core/utils/firestore_seed_data.dart for complete data setup
 class PodcastLocalDatasource extends PodcastDatasource {
   @override
   Future<List<Podcast>> getPodcastList() async {

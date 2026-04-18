@@ -2,11 +2,15 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:spotify_clone/bloc/download/download_event.dart';
 import 'package:spotify_clone/bloc/download/download_state.dart';
+import 'package:spotify_clone/services/hive_service.dart';
 
 class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
   final Map<String, Timer> _downloadTimers = {};
+  final HiveService _hiveService;
 
-  DownloadBloc() : super(const DownloadInitial()) {
+  DownloadBloc({required HiveService hiveService})
+      : _hiveService = hiveService,
+        super(const DownloadInitial()) {
     on<LoadDownloadsEvent>(_onLoad);
     on<StartDownloadEvent>(_onStartDownload);
     on<UpdateDownloadProgressEvent>(_onUpdateProgress);
@@ -16,7 +20,29 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
   Future<void> _onLoad(
       LoadDownloadsEvent event, Emitter<DownloadState> emit) async {
-    emit(const DownloadsLoaded({}));
+    final stored = _hiveService.getDownloadedTracks();
+    final tracks = <String, DownloadedTrack>{};
+
+    for (final entry in stored.entries) {
+      final data = entry.value;
+      final statusRaw = data['status'] as String? ?? 'notDownloaded';
+      final status = DownloadStatus.values.firstWhere(
+        (s) => s.name == statusRaw,
+        orElse: () => DownloadStatus.notDownloaded,
+      );
+
+      tracks[entry.key] = DownloadedTrack(
+        trackId: data['trackId'] as String? ?? entry.key,
+        trackName: data['trackName'] as String? ?? 'Unknown',
+        artist: data['artist'] as String? ?? 'Unknown',
+        albumArt: data['albumArt'] as String?,
+        audioUrl: data['audioUrl'] as String?,
+        status: status,
+        progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
+      );
+    }
+
+    emit(DownloadsLoaded(tracks));
   }
 
   Future<void> _onStartDownload(
@@ -41,6 +67,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
       ..[event.trackId] = newTrack;
 
     emit(DownloadsLoaded(newTracks));
+    await _persistTrack(newTrack);
 
     // Simulate download progress over ~3 seconds
     double progress = 0.0;
@@ -74,6 +101,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         Map<String, DownloadedTrack>.from(current.tracks)
           ..[event.trackId] = updated;
     emit(DownloadsLoaded(newTracks));
+    await _persistTrack(updated);
   }
 
   Future<void> _onComplete(
@@ -89,6 +117,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         Map<String, DownloadedTrack>.from(current.tracks)
           ..[event.trackId] = updated;
     emit(DownloadsLoaded(newTracks));
+    await _persistTrack(updated);
   }
 
   Future<void> _onRemove(
@@ -102,6 +131,20 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         Map<String, DownloadedTrack>.from(current.tracks)
           ..remove(event.trackId);
     emit(DownloadsLoaded(newTracks));
+    await _hiveService.removeDownloadedTrack(event.trackId);
+  }
+
+  Future<void> _persistTrack(DownloadedTrack track) async {
+    await _hiveService.saveDownloadedTrack({
+      'trackId': track.trackId,
+      'trackName': track.trackName,
+      'artist': track.artist,
+      'albumArt': track.albumArt,
+      'audioUrl': track.audioUrl,
+      'status': track.status.name,
+      'progress': track.progress,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
   }
 
   @override
