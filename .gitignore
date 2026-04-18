@@ -44,3 +44,36 @@ app.*.map.json
 
 .github/Analyse_Codebase_skill.md
 devmate_roadmap.md
+testlogs.txt
+# Secrets
+# service account and credential files
+serviceAccountKey.json
+scripts/serviceAccountKey.json
+# dotenv files
+.env
+.env.*
+# Firebase / Google credentials
+google-services.json
+GoogleService-Info.plist
+# Key, cert, and keystore files
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+# Private credentials
+credentials.json
+credentials.yaml
+*.secret
+# Common SSH/private keys (repo-scoped filenames)
+id_rsa
+id_rsa.pub
+# Ignore secrets directory
+secrets/
+
+# Local secrets and generated firebase options
+lib/firebase_options.dart
+firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
